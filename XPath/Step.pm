@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.19 2000/05/16 16:53:37 matt Exp $
+# $Id: Step.pm,v 1.21 2000/06/08 13:00:23 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -241,8 +241,9 @@ sub axis_preceding {
 	my $i = $context->get_pos;
 	my $ref = 0;
 	my $kids = $context->getParentNode->getChildNodes;
-	while($kids->[$ref] ne $context) {
-		axis_descendant_or_self($self, $kids->[$ref], $results);
+	my $node;
+	while(($node = $kids->[$ref]) && "$$node" ne "$context") {
+		axis_descendant_or_self($self, $node, $results);
 		$ref++;
 	}
 }
@@ -254,12 +255,12 @@ sub axis_preceding_sibling {
 	$self->{pp}->set_direction('reverse');
 	my $parent = $context->getParentNode;
 	return $results unless $parent;
-	my $i = $context->get_pos;
 	my $ref = 0;
 	my $kids = $parent->getChildNodes;
-	while($kids->[$ref] ne $context) {
-		if (node_test($self, $kids->[$ref])) {
-			$results->push($kids->[$ref]);
+	my $node;
+	while(($node = $kids->[$ref]) && ("$$node" ne "$context")) {
+		if (node_test($self, $node)) {
+			$results->push($node);
 		}
 		$ref++;
 	}
@@ -286,21 +287,24 @@ sub node_test {
 	
 	# if node passes test, return true
 	
-	return 1 if $self->{test} eq '*'; # True for all nodes of principal type (element)
-	return 1 if $self->{test} eq 'node()';
-
-	if ($self->{test} =~ /^(text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
-		if ($self->{test} eq 'text()') {
+	my $test = $self->{test};
+	
+	if ($test eq '*' || $test eq 'node()') {
+		return 1 if $node->isElementNode;
+	}
+	
+	if ($test =~ /^(text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
+		if ($test eq 'text()') {
 			return 1 if $node->getNodeType == TEXT_NODE;
 		}
-		elsif ($self->{test} eq 'comment()') {
+		elsif ($test eq 'comment()') {
 			return 1 if $node->getNodeType == COMMENT_NODE;
 		}
-		elsif ($self->{test} eq 'processing-instruction()') {
+		elsif ($test eq 'processing-instruction()') {
 			warn "Unreachable code???";
 			return 1 if $node->getNodeType == PROCESSING_INSTRUCTION_NODE;
 		}
-		elsif ($self->{test} eq 'processing-instruction') {
+		elsif ($test eq 'processing-instruction') {
 			return unless $node->getNodeType == PROCESSING_INSTRUCTION_NODE;
 			if (my $val = $self->{literal}->value) {
 				return 1 if $node->getTarget eq $val;
@@ -311,16 +315,16 @@ sub node_test {
 		}
 	}
 
-	return unless $node->getNodeType == ELEMENT_NODE;
+	return unless $node->isElementNode;
 	
-	if ($self->{test} =~ /^$XML::XPath::Parser::NCName$/) {
-		return 1 if $node->getLocalName eq $self->{test};
+	if ($test =~ /^$XML::XPath::Parser::NCName$/) {
+		return 1 if $node->getLocalName eq $test;
 	}
-	elsif ($self->{test} =~ /^($XML::XPath::Parser::NCName):\*$/) {
+	elsif ($test =~ /^($XML::XPath::Parser::NCName):\*$/) {
 		my $nsprefix = $1;
 		return 1 if $node->getPrefix eq $nsprefix;
 	}
-	elsif ($self->{test} =~ /^($XML::XPath::Parser::NCName)\:($XML::XPath::Parser::NCName)$/) {
+	elsif ($test =~ /^($XML::XPath::Parser::NCName)\:($XML::XPath::Parser::NCName)$/) {
 		return 1 if $node->getName eq $self->{test};
 	}
 	
@@ -334,24 +338,26 @@ sub test_attribute {
 #	warn "test_attrib: $self->{test}\n";
 #	warn "node type: $node->[node_type]\n";
 	
-	return 1 if $self->{test} eq '*';
+	my $test = $self->{test};
+	
+	return 1 if $test eq '*';
 
-	if ($self->{test} eq 'node()') {
+	if ($test eq 'node()') {
 		return 1;
 	}
-	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName$/) {
+	elsif ($test =~ /^$XML::XPath::Parser::NCName$/) {
 		# check attrib exists
-		if ($node->getName eq $self->{test}) {
+		if ($node->getName eq $test) {
 			return 1;
 		}
 	}
-	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName:\*$/) {
+	elsif ($test =~ /^$XML::XPath::Parser::NCName:\*$/) {
 		my ($prefix) = $1;
 		if ($node->getPrefix eq $prefix) {
 			return 1;
 		}
 	}
-	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName\:$XML::XPath::Parser::NCName$/) {
+	elsif ($test =~ /^$XML::XPath::Parser::NCName\:$XML::XPath::Parser::NCName$/) {
 		# Expand namespace, then match if node in that ns and name = NCName
 		my ($prefix, $key) = ($1, $2);
 		if ($node->getPrefix eq $prefix && $node->getName eq $key) {
@@ -369,12 +375,14 @@ sub test_namespace {
 	# Not sure if this is correct. The spec seems very unclear on what
 	# constitutes a namespace test... bah!
 	
-	return 1 if $self->{test} eq '*'; # True for all nodes of principal type
+	my $test = $self->{test};
 	
-	if ($self->{test} eq 'node()') {
+	return 1 if $test eq '*'; # True for all nodes of principal type
+	
+	if ($test eq 'node()') {
 		return 1;
 	}
-	elsif ($self->{test} eq $node->getExpanded) {
+	elsif ($test eq $node->getExpanded) {
 		return 1;
 	}
 	

@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.14 2000/05/16 16:53:37 matt Exp $
+# $Id: Function.pm,v 1.15 2000/06/08 13:00:23 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -32,6 +32,9 @@ sub as_string {
 sub evaluate {
 	my $self = shift;
 	my $node = shift;
+	if ($node->isa('XML::XPath::NodeSet')) {
+		$node = $node->get_node(1);
+	}
 	my @params;
 	foreach my $param (@{$self->{params}}) {
 		my $results = $param->evaluate($node);
@@ -105,11 +108,9 @@ sub id {
 		my $string = $self->string($node, $params[0]);
 		$_ = $string->value; # get perl scalar
 		my @ids = split; # splits $_
-		# get root node
-		my $root = $node;
-		$root = $root->getParentNode while($root->getParentNode);
 		foreach my $id (@ids) {
-			$results->append($self->_find_id($root, $id));
+			my $path = $self->{pp}->parse('//*[@id = "'. $id . '"]');
+			$results->append($path->evaluate($node));
 		}
 	}
 	return $results;
