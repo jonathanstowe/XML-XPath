@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.48 2001/03/08 12:21:18 matt Exp $
+# $Id: XMLParser.pm,v 1.49 2001/03/14 17:13:57 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -146,7 +146,7 @@ sub parse_start {
             $node->appendAttribute($newattr, 1);
             if (exists($self->{IdNames}{$tag}) && ($self->{IdNames}{$tag} eq $name)) {
     #            warn "appending Id Element: $val for ", $node->getName, "\n";
-                $e->{DOC_Node}->appendIdElement($value, $node);
+                $self->{DOC_Node}->appendIdElement($value, $node);
             }
         }
     }

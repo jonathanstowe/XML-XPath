@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.21 2000/11/06 15:44:02 matt Exp $
+# $Id: Function.pm,v 1.22 2001/03/16 11:10:08 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -27,6 +27,23 @@ sub as_string {
         $string .= $_->as_string;
     }
     $string .= ")";
+    return $string;
+}
+
+sub as_xml {
+    my $self = shift;
+    my $string = "<Function name=\"$self->{name}\"";
+    my $params = "";
+    foreach (@{$self->{params}}) {
+        $params .= "<Param>" . $_->as_string . "</Param>\n";
+    }
+    if ($params) {
+        $string .= ">\n$params</Function>\n";
+    }
+    else {
+        $string .= " />\n";
+    }
+    
     return $string;
 }
 

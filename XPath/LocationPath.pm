@@ -1,4 +1,4 @@
-# $Id: LocationPath.pm,v 1.7 2000/01/26 15:08:30 matt Exp $
+# $Id: LocationPath.pm,v 1.8 2001/03/16 11:10:08 matt Exp $
 
 package XML::XPath::LocationPath;
 use XML::XPath::Root;
@@ -18,6 +18,18 @@ sub as_string {
 		$string .= "/" if $self->[$i+1];
 	}
 	return $string;
+}
+
+sub as_xml {
+    my $self = shift;
+    my $string = "<LocationPath>\n";
+    
+    for (my $i = 0; $i < @$self; $i++) {
+        $string .= $self->[$i]->as_xml;
+    }
+    
+    $string .= "</LocationPath>\n";
+    return $string;
 }
 
 sub set_root {

@@ -1,4 +1,4 @@
-# $Id: Root.pm,v 1.5 2000/06/09 14:34:51 matt Exp $
+# $Id: Root.pm,v 1.6 2001/03/16 11:10:08 matt Exp $
 
 package XML::XPath::Root;
 use strict;
@@ -13,6 +13,10 @@ sub new {
 
 sub as_string {
 	# do nothing
+}
+
+sub as_xml {
+    return "<Root/>\n";
 }
 
 sub evaluate {

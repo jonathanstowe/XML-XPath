@@ -1,4 +1,4 @@
-# $Id: Number.pm,v 1.12 2000/07/03 08:52:52 matt Exp $
+# $Id: Number.pm,v 1.13 2001/03/16 11:10:08 matt Exp $
 
 package XML::XPath::Number;
 use XML::XPath::Boolean;
@@ -6,49 +6,54 @@ use XML::XPath::Literal;
 use strict;
 
 use overload
-		'""' => \&value,
-		'0+' => \&value,
-		'<=>' => \&cmp;
+        '""' => \&value,
+        '0+' => \&value,
+        '<=>' => \&cmp;
 
 sub new {
-	my $class = shift;
-	my $number = shift;
-	if ($number !~ /^\s*(\d+(\.\d*)?|\.\d+)\s*$/) {
-		$number = undef;
-	}
-	else {
-		$number =~ s/^\s*(.*)\s*$/$1/;
-	}
-	bless \$number, $class;
+    my $class = shift;
+    my $number = shift;
+    if ($number !~ /^\s*(\d+(\.\d*)?|\.\d+)\s*$/) {
+        $number = undef;
+    }
+    else {
+        $number =~ s/^\s*(.*)\s*$/$1/;
+    }
+    bless \$number, $class;
 }
 
 sub as_string {
-	my $self = shift;
-	defined $$self ? $$self : 'NaN';
+    my $self = shift;
+    defined $$self ? $$self : 'NaN';
+}
+
+sub as_xml {
+    my $self = shift;
+    return "<Number>" . (defined($$self) ? $$self : 'NaN') . "</Number>\n";
 }
 
 sub value {
-	my $self = shift;
-	$$self;
+    my $self = shift;
+    $$self;
 }
 
 sub cmp {
-	my $self = shift;
-	my ($other, $swap) = @_;
-	if ($swap) {
-		return $other <=> $$self;
-	}
-	return $$self <=> $other;
+    my $self = shift;
+    my ($other, $swap) = @_;
+    if ($swap) {
+        return $other <=> $$self;
+    }
+    return $$self <=> $other;
 }
 
 sub evaluate {
-	my $self = shift;
-	$self;
+    my $self = shift;
+    $self;
 }
 
 sub to_boolean {
-	my $self = shift;
-	return $$self ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
+    my $self = shift;
+    return $$self ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
 }
 
 sub to_literal { XML::XPath::Literal->new($_[0]->as_string); }

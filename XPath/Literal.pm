@@ -1,4 +1,4 @@
-# $Id: Literal.pm,v 1.10 2000/07/03 08:53:41 matt Exp $
+# $Id: Literal.pm,v 1.11 2001/03/16 11:10:08 matt Exp $
 
 package XML::XPath::Literal;
 use XML::XPath::Boolean;
@@ -24,6 +24,12 @@ sub as_string {
 	my $string = $$self;
 	$string =~ s/'/&apos;/g;
 	return "'$string'";
+}
+
+sub as_xml {
+    my $self = shift;
+    my $string = $$self;
+    return "<Literal>$string</Literal>\n";
 }
 
 sub value {

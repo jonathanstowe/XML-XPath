@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.32 2001/02/26 14:58:17 matt Exp $
+# $Id: Step.pm,v 1.34 2001/03/16 11:19:17 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -46,7 +46,7 @@ sub as_string {
     my $self = shift;
     my $string = $self->{axis} . "::";
 
-        my $test = $self->{test};
+    my $test = $self->{test};
         
     if ($test == test_nt_pi) {
         $string .= 'processing-instruction(';
@@ -71,12 +71,57 @@ sub as_string {
         $string .= $self->{literal};
     }
     
-    if (@{$self->{predicates}}) {
-        foreach (@{$self->{predicates}}) {
-            next unless defined $_;
-            $string .= "[" . $_->as_string . "]";
+    foreach (@{$self->{predicates}}) {
+        next unless defined $_;
+        $string .= "[" . $_->as_string . "]";
+    }
+    return $string;
+}
+
+sub as_xml {
+    my $self = shift;
+    my $string = "<Step>\n";
+    $string .= "<Axis>" . $self->{axis} . "</Axis>\n";
+    my $test = $self->{test};
+    
+    $string .= "<Test>";
+    
+    if ($test == test_nt_pi) {
+        $string .= '<processing-instruction';
+        if ($self->{literal}->value) {
+            $string .= '>';
+            $string .= $self->{literal}->as_string;
+            $string .= '</processing-instruction>';
+        }
+        else {
+            $string .= '/>';
         }
     }
+    elsif ($test == test_nt_comment) {
+        $string .= '<comment/>';
+    }
+    elsif ($test == test_nt_text) {
+        $string .= '<text/>';
+    }
+    elsif ($test == test_nt_node) {
+        $string .= '<node/>';
+    }
+    elsif ($test == test_ncwild || $test == test_attr_ncwild) {
+        $string .= '<namespace-prefix>' . $self->{literal} . '</namespace-prefix>';
+    }
+    else {
+        $string .= '<nametest>' . $self->{literal} . '</nametest>';
+    }
+    
+    $string .= "</Test>\n";
+    
+    foreach (@{$self->{predicates}}) {
+        next unless defined $_;
+        $string .= "<Predicate>\n" . $_->as_xml() . "</Predicate>\n";
+    }
+    
+    $string .= "</Step>\n";
+    
     return $string;
 }
 

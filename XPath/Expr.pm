@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.16 2001/02/26 14:58:17 matt Exp $
+# $Id: Expr.pm,v 1.18 2001/03/16 11:19:16 matt Exp $
 
 package XML::XPath::Expr;
 use strict;
@@ -20,6 +20,75 @@ sub as_string {
         $string .= "[" . $predicate->as_string . "]";
     }
     return $string;
+}
+
+sub as_xml {
+    my $self = shift;
+    local $^W; # Use of uninitialized value! grrr
+    my $string;
+    if (defined $self->{op}) {
+        $string .= $self->op_xml();
+    }
+    else {
+        $string .= $self->{lhs}->as_xml();
+    }
+    foreach my $predicate (@{$self->{predicates}}) {
+        $string .= "<Predicate>\n" . $predicate->as_xml() . "</Predicate>\n";
+    }
+    return $string;
+}
+
+sub op_xml {
+    my $self = shift;
+    my $op = $self->{op};
+
+    my $tag;    
+    for ($op) {
+        /^or$/    && do {
+                    $tag = "Or";
+                };
+        /^and$/    && do {
+                    $tag = "And";
+                };
+        /^=$/    && do {
+                    $tag = "Equals";
+                };
+        /^!=$/    && do {
+                    $tag = "NotEquals";
+                };
+        /^<=$/    && do {
+                    $tag = "LessThanOrEquals";
+                };
+        /^>=$/    && do {
+                    $tag = "GreaterThanOrEquals";
+                };
+        /^>$/    && do {
+                    $tag = "GreaterThan";
+                };
+        /^<$/    && do {
+                    $tag = "LessThan";
+                };
+        /^\+$/    && do {
+                    $tag = "Plus";
+                };
+        /^-$/    && do {
+                    $tag = "Minus";
+                };
+        /^div$/    && do {
+                    $tag = "Div";
+                };
+        /^mod$/    && do {
+                    $tag = "Mod";
+                };
+        /^\*$/    && do {
+                    $tag = "Multiply";
+                };
+        /^\|$/    && do {
+                    $tag = "Union";
+                };
+    }
+    
+    return "<$tag>\n" . $self->{lhs}->as_xml() . $self->{rhs}->as_xml() . "</$tag>\n";
 }
 
 sub set_lhs {
