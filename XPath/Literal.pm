@@ -1,4 +1,4 @@
-# $Id: Literal.pm,v 1.6 2000/03/20 14:46:29 matt Exp $
+# $Id: Literal.pm,v 1.7 2000/04/20 09:12:13 matt Exp $
 
 package XML::XPath::Literal;
 use XML::XPath::Boolean;
@@ -51,3 +51,38 @@ sub to_number { XML::XPath::Number->new($_[0]->value); }
 sub to_literal { $_[0]; }
 
 1;
+__END__
+
+=head1 NAME
+
+XML::XPath::Literal - Simple string values.
+
+=head1 DESCRIPTION
+
+In XPath terms a Literal is what we know as a string.
+
+=head1 API
+
+=head2 new($string)
+
+Create a new Literal object with the value in $string. Note that &quot; and
+&apos; will be converted to " and ' respectively. That is not part of the XPath
+specification, but I consider it useful. Note though that you have to go
+to extraordinary lengths in an XML template file (be it XSLT or whatever) to
+make use of this:
+
+	<xsl:value-of select="&quot;I'm feeling &amp;quot;sad&amp;quot;&quot;"/>
+
+Which produces a Literal of:
+
+	I'm feeling "sad"
+
+=head2 value()
+
+Also overloaded as stringification, simply returns the literal string value.
+
+=head2 cmp($literal)
+
+Returns the equivalent of perl's cmp operator against the given $literal.
+
+=cut

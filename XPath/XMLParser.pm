@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.29 2000/04/18 08:21:04 matt Exp $
+# $Id: XMLParser.pm,v 1.30 2000/04/20 09:12:13 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -598,6 +598,31 @@ references in the node structure:
 
 This method isn't exported and I don't intend it to ever be that way - I hate
 exporting methods (I make exceptions for the node_ constants in this file).
+
+=head2 mk*
+
+The mk* functions construct nodes for you, should you need to do that outside
+of XML::XPath. The do not add nodes to the right place in the parent, you
+have to do that manually after constructing the node (this is subject to change).
+Neither do they set the node_pos value.
+
+=over 4
+
+=item mkelement($parent, $tag) - Constructs an element node.
+
+=item mkattrib($parent, $key, $value, $prefix) - Constructs an attribute node. $prefix
+is the namespace prefix. $parent must be the element node. Does not add the
+attribute to the element's list of attributes.
+
+=item mknamespace($parent, $prefix, $expanded) - Constructs a namespace node.
+
+=item mkcomment($parent, $text) - Constructs a comment node
+
+=item mktext($parent, $text) - Constructs a text node
+
+=item mkpi($parent, $target, $data) - Constructs a processing instruction node.
+
+=back
 
 =head1 NOTICES
 

@@ -1,4 +1,4 @@
-# $Id: Boolean.pm,v 1.3 2000/03/20 14:47:06 matt Exp $
+# $Id: Boolean.pm,v 1.4 2000/04/20 09:12:13 matt Exp $
 
 package XML::XPath::Boolean;
 use XML::XPath::Number;
@@ -30,3 +30,32 @@ sub to_boolean { $_[0]; }
 sub to_literal { XML::XPath::Literal->new($_[0]->value ? "true" : "false"); }
 
 1;
+__END__
+
+=head1 NAME
+
+XML::XPath::Boolean - Boolean true/false values
+
+=head1 DESCRIPTION
+
+XML::XPath::Boolean objects implement simple boolean true/false objects.
+
+=head1 API
+
+=head2 XML::XPath::Boolean->True
+
+Creates a new Boolean object with a true value.
+
+=head2 XML::XPath::Boolean->False
+
+Creates a new Boolean object with a false value.
+
+=head2 value()
+
+Returns true or false.
+
+=head2 to_literal()
+
+Returns the string "true" or "false".
+
+=cut
