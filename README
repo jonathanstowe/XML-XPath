@@ -1,0 +1,42 @@
+=head1 NAME
+
+XML::XPath - An XPath parser and resolver
+
+=head1 DESCRIPTION
+
+This module implements the W3C's XPath specification. It aims to
+be completely correct to the letter of the spec, and yet still
+allow extensions through the use of functions and variables, 
+such as are provided by XSLT and XPointer.
+
+=head2 Changes
+
+=over
+
+=item 0.10
+
+Upload to CPAN
+More docs
+
+=item 0.09
+
+Lots of fixes and changes.
+
+Most functions implemented
+Attributes and Namespaces now done (mostly right).
+Added some documentation
+*** Added PerlSAX event generator ***
+Lots of as_string fixes
+Allow id(...) in LocationPaths (even though spec seems to disagree).
+
+=item 0.08
+
+Some functions and operators implemented
+
+=item 0.07
+
+This is the first public release
+
+=back
+
+$Id: README,v 1.2 2000/01/26 18:21:05 matt Exp $
