@@ -1,4 +1,4 @@
-# $Id: Number.pm,v 1.11 2000/05/16 16:53:37 matt Exp $
+# $Id: Number.pm,v 1.12 2000/07/03 08:52:52 matt Exp $
 
 package XML::XPath::Number;
 use XML::XPath::Boolean;
@@ -7,7 +7,8 @@ use strict;
 
 use overload
 		'""' => \&value,
-		'0+' => \&value;
+		'0+' => \&value,
+		'<=>' => \&cmp;
 
 sub new {
 	my $class = shift;
@@ -29,6 +30,15 @@ sub as_string {
 sub value {
 	my $self = shift;
 	$$self;
+}
+
+sub cmp {
+	my $self = shift;
+	my ($other, $swap) = @_;
+	if ($swap) {
+		return $other <=> $$self;
+	}
+	return $$self <=> $other;
 }
 
 sub evaluate {

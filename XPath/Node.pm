@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.5 2000/06/09 14:34:51 matt Exp $
+# $Id: Node.pm,v 1.7 2000/08/15 16:17:04 matt Exp $
 
 package XML::XPath::Node;
 
@@ -134,9 +134,15 @@ sub XMLescape {
     return undef unless defined $str;
 	$default ||= '';
     
-    $str =~ s/([\xC0-\xDF].|[\xE0-\xEF]..|[\xF0-\xFF]...)|([$default])|(]]>)/
-	defined($1) ? XmlUtf8Decode ($1) : 
-	defined ($2) ? $DecodeDefaultEntity{$2} : "]]&gt;" /egsx;
+	if ($XML::XPath::EncodeUtf8AsEntity) {
+    	$str =~ s/([\xC0-\xDF].|[\xE0-\xEF]..|[\xF0-\xFF]...)|([$default])|(]]>)/
+		defined($1) ? XmlUtf8Decode ($1) : 
+		defined ($2) ? $DecodeDefaultEntity{$2} : "]]&gt;" /egsx;
+	}
+	else {
+    	$str =~ s/([$default])|(]]>)/
+		defined ($1) ? $DecodeDefaultEntity{$1} : "]]&gt;" /egsx;
+	}
 
 #?? could there be references that should not be expanded?
 # e.g. should not replace &#nn; &#xAF; and &abc;
@@ -248,8 +254,11 @@ sub getRootNode {
 sub getElementById {
 	my $self = shift;
 	my ($id) = @_;
+#	warn "getElementById: $id\n";
 	my $root = $self->getRootNode;
-	return $root->[7]{$id};
+	my $node = $root->[7]{$id};
+#	warn "returning node: ", $node->getName, "\n";
+	return $node;
 }
 
 sub getName { }
@@ -292,14 +301,14 @@ sub getPreviousSibling {
 	my $self = shift;
 	my $pos = $self->[XML::XPath::Node::node_pos];
 	return unless $self->[XML::XPath::Node::node_parent];
-	$self->[XML::XPath::Node::node_parent]->getChildNode($pos - 1);
+	return $self->[XML::XPath::Node::node_parent]->getChildNode($pos);
 }
 
 sub getNextSibling {
 	my $self = shift;
 	my $pos = $self->[XML::XPath::Node::node_pos];
 	return unless $self->[XML::XPath::Node::node_parent];
-	$self->[XML::XPath::Node::node_parent]->getChildNode($pos + 1);
+	return $self->[XML::XPath::Node::node_parent]->getChildNode($pos + 2);
 }
 
 sub setParentNode {

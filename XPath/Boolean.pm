@@ -1,4 +1,4 @@
-# $Id: Boolean.pm,v 1.6 2000/05/16 16:53:37 matt Exp $
+# $Id: Boolean.pm,v 1.7 2000/07/03 08:54:47 matt Exp $
 
 package XML::XPath::Boolean;
 use XML::XPath::Number;
@@ -6,7 +6,8 @@ use XML::XPath::Literal;
 use strict;
 
 use overload
-		'""' => \&value;
+		'""' => \&value,
+		'<=>' => \&cmp;
 
 sub True {
 	my $class = shift;
@@ -23,6 +24,15 @@ sub False {
 sub value {
 	my $self = shift;
 	$$self;
+}
+
+sub cmp {
+	my $self = shift;
+	my ($other, $swap) = @_;
+	if ($swap) {
+		return $other <=> $$self;
+	}
+	return $$self <=> $other;
 }
 
 sub to_number { XML::XPath::Number->new($_[0]->value); }

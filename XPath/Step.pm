@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.21 2000/06/08 13:00:23 matt Exp $
+# $Id: Step.pm,v 1.23 2000/08/15 16:17:04 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -194,17 +194,12 @@ sub axis_following {
 sub axis_following_sibling {
 	my $self = shift;
 	my ($context, $results) = @_;
-	
-	my $parent = $context->getParentNode;
-	return $results unless $parent;
-	my $i = $context->get_pos + 1;
-	my $children = $parent->getChildNodes;
-	while(1) {
-		last unless $children->[$i];
-		if (node_test($self, $children->[$i])) {
-			$results->push($children->[$i]);
+
+	my $node = $context;
+	while ($node = $node->getNextSibling) {
+		if (node_test($self, $node)) {
+			$results->push($node);
 		}
-		$i++;
 	}
 }
 
@@ -253,16 +248,12 @@ sub axis_preceding_sibling {
 	my ($context, $results) = @_;
 	
 	$self->{pp}->set_direction('reverse');
-	my $parent = $context->getParentNode;
-	return $results unless $parent;
-	my $ref = 0;
-	my $kids = $parent->getChildNodes;
-	my $node;
-	while(($node = $kids->[$ref]) && ("$$node" ne "$context")) {
+	
+	my $node = $context;
+	while ($node = $node->getPreviousSibling) {
 		if (node_test($self, $node)) {
 			$results->push($node);
 		}
-		$ref++;
 	}
 }
 
@@ -317,15 +308,14 @@ sub node_test {
 
 	return unless $node->isElementNode;
 	
-	if ($test =~ /^$XML::XPath::Parser::NCName$/) {
+	if ($test =~ /^$XML::XPath::Parser::NCWild$/o) {
+		return 1 if $node->getPrefix eq $1;
+	}
+	elsif ($test =~ /^$XML::XPath::Parser::NCName$/o) {
 		return 1 if $node->getLocalName eq $test;
 	}
-	elsif ($test =~ /^($XML::XPath::Parser::NCName):\*$/) {
-		my $nsprefix = $1;
-		return 1 if $node->getPrefix eq $nsprefix;
-	}
-	elsif ($test =~ /^($XML::XPath::Parser::NCName)\:($XML::XPath::Parser::NCName)$/) {
-		return 1 if $node->getName eq $self->{test};
+	elsif ($test =~ /^$XML::XPath::Parser::QName$/o) {
+		return 1 if $node->getName eq $test;
 	}
 	
 	return; # fallthrough returns false
@@ -335,34 +325,18 @@ sub test_attribute {
 	my $self = shift;
 	my $node = shift;
 	
-#	warn "test_attrib: $self->{test}\n";
+#	warn "test_attrib: '$self->{test}' against: ", $node->getName, "\n";
 #	warn "node type: $node->[node_type]\n";
 	
 	my $test = $self->{test};
 	
-	return 1 if $test eq '*';
+	return 1 if ($test eq '*') || ($test eq 'node()');
 
-	if ($test eq 'node()') {
-		return 1;
+	if ($test =~ /^$XML::XPath::Parser::NCWild$/o) {
+		return 1 if $node->getPrefix eq $1;
 	}
-	elsif ($test =~ /^$XML::XPath::Parser::NCName$/) {
-		# check attrib exists
-		if ($node->getName eq $test) {
-			return 1;
-		}
-	}
-	elsif ($test =~ /^$XML::XPath::Parser::NCName:\*$/) {
-		my ($prefix) = $1;
-		if ($node->getPrefix eq $prefix) {
-			return 1;
-		}
-	}
-	elsif ($test =~ /^$XML::XPath::Parser::NCName\:$XML::XPath::Parser::NCName$/) {
-		# Expand namespace, then match if node in that ns and name = NCName
-		my ($prefix, $key) = ($1, $2);
-		if ($node->getPrefix eq $prefix && $node->getName eq $key) {
-			return 1;
-		}
+	elsif ($test =~ /^$XML::XPath::Parser::QName$/o) {
+		return 1 if $node->getName eq $test;
 	}
 	
 	return; # fallthrough returns false

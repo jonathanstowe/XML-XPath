@@ -1,4 +1,4 @@
-# $Id: Literal.pm,v 1.9 2000/05/16 16:53:37 matt Exp $
+# $Id: Literal.pm,v 1.10 2000/07/03 08:53:41 matt Exp $
 
 package XML::XPath::Literal;
 use XML::XPath::Boolean;
@@ -33,8 +33,11 @@ sub value {
 
 sub cmp {
 	my $self = shift;
-	my ($cmp) = @_;
-	$$self cmp $cmp;
+	my ($cmp, $swap) = @_;
+	if ($swap) {
+		return $cmp cmp $$self;
+	}
+	return $$self cmp $cmp;
 }
 
 sub evaluate {

@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.4 2000/06/09 14:34:53 matt Exp $
+# $Id: Element.pm,v 1.5 2000/08/15 13:46:43 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -118,6 +118,7 @@ sub appendAttribute {
 sub getNamespace {
 	my $self = shift;
 	my ($prefix) = @_;
+	$prefix ||= $self->getPrefix;
 	my $namespaces = $self->[node_namespaces];
 	return unless $namespaces;
 	foreach my $ns (@$namespaces) {

@@ -1,9 +1,18 @@
-# $Id: Parser.pm,v 1.23 2000/05/16 16:53:37 matt Exp $
+# $Id: Parser.pm,v 1.24 2000/08/15 13:46:06 matt Exp $
 
 package XML::XPath::Parser;
 
 use strict;
-use vars qw/$NCName $QName $NUMBER_RE $NODE_TYPE $AXIS_NAME %AXES $LITERAL/;
+use vars qw/
+		$NCName 
+		$QName 
+		$NCWild
+		$QNWild
+		$NUMBER_RE 
+		$NODE_TYPE 
+		$AXIS_NAME 
+		%AXES 
+		$LITERAL/;
 
 use XML::XPath::XMLParser;
 use XML::XPath::Step;
@@ -34,6 +43,8 @@ use XML::XPath::NodeSet;
 
 $NCName = '([A-Za-z_][\w\\.\\-]*)';
 $QName = "($NCName:)?$NCName";
+$NCWild = "${NCName}:\\*";
+$QNWild = "\\*";
 $NODE_TYPE = '((text|comment|processing-instruction|node)\\(\\))';
 $AXIS_NAME = '(' . join('|', keys %AXES) . ')::';
 $NUMBER_RE = '\d+(\\.\d*)?|\\.\d+';
@@ -134,9 +145,9 @@ sub tokenize {
 			\.| # match current
 			($AXIS_NAME)?$NODE_TYPE| # match tests
 			processing-instruction|
-			\@($QName|\*)| # match attrib
+			\@($NCWild|$QName|$QNWild)| # match attrib
 			\$$QName| # match variable reference
-			($AXIS_NAME)?(\*|$NCName\:\*|$QName)| # match NCName,NodeType,Axis::Test
+			($AXIS_NAME)?($NCWild|$QName|$QNWild)| # match NCName,NodeType,Axis::Test
 			\!=|<=|\-|>=|\/\/|and|or|mod|div| # multi-char seps
 			[,\+=\|<>\/\(\[\]\)]| # single char seps
 			(?<!(\@|\(|\[))\*| # multiply operator rules (see xpath spec)
@@ -160,8 +171,9 @@ sub tokenize {
 		$path = substr($path, 0, pos($path) + 8) . "...";
 		$path =~ s/\n/ /g;
 		$path =~ s/\t/ /g;
-		die "Query: $path\n",
-			"      ",  $marker, "^^^\n",
+		die "Query:\n",
+			"$path\n",
+			$marker, "^^^\n",
 			"Invalid query somewhere around here (I think)\n";
 	}
 	
@@ -540,12 +552,12 @@ sub optimise_descendant_or_self {
 	elsif ($tokens->[$tokpos] =~ /^\.\.?$/) {
 		# abbreviatedStep - can't optimise.
 		return;
-	}
+	}                                                                                              
 	else {
 		debug("Trying to optimise //\n");
 		my $step = Step($self, $tokens);
-		if ($step->{axis} !~ /^(child|attribute)$/) {
-			# can't optimise axes other than child and attribute
+		if ($step->{axis} ne 'child') {
+			# can't optimise axes other than child for now...
 			$self->{_tokpos} = $tokpos;
 			return;
 		}
@@ -554,7 +566,6 @@ sub optimise_descendant_or_self {
 		$self->{_tokpos}--;
 		$tokens->[$self->{_tokpos}] = '.';
 		return $step;
-		
 	}
 }
 
@@ -616,15 +627,19 @@ sub Step {
 					XML::XPath::Literal->new($1));
 			match($self, $tokens, '\\)', 1);
 		}
-		elsif ($token =~ /^\@($QName|\*)$/o) {
+		elsif ($token =~ /^\@($NCWild|$QName|$QNWild)$/o) {
 			$self->{_tokpos}++;
 			$step = XML::XPath::Step->new($self, 'attribute', $1);
+		}
+		elsif ($token =~ /^$NCWild$/o) {
+			$self->{_tokpos}++;
+			$step = XML::XPath::Step->new($self, 'child', $token);
 		}
 		elsif ($token =~ /^$QName$/o) {
 			$self->{_tokpos}++;
 			$step = XML::XPath::Step->new($self, 'child', $token);
 		}
-		elsif ($token =~ /^\*$/) {
+		elsif ($token =~ /^$QNWild$/o) {
 			$self->{_tokpos}++;
 			$step = XML::XPath::Step->new($self, 'child', $token);
 		}
@@ -632,7 +647,7 @@ sub Step {
 			$self->{_tokpos}++;
 			$step = XML::XPath::Step->new($self, 'child', $1);
 		}
-		elsif ($token =~ /^$AXIS_NAME($QName|\*|$NODE_TYPE)$/o) {
+		elsif ($token =~ /^$AXIS_NAME($NCWild|$QName|$QNWild|$NODE_TYPE)$/o) {
 			$self->{_tokpos}++;
 			$step = XML::XPath::Step->new($self, $1, $2);
 		}

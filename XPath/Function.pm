@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.16 2000/06/09 14:34:51 matt Exp $
+# $Id: Function.pm,v 1.17 2000/08/15 16:17:04 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -105,34 +105,15 @@ sub id {
 			$results->append($self->id($node, XML::XPath::Literal->new($string)));
 		}
 	}
-	else {
+	else { # The actual id() function...
 		my $string = $self->string($node, $params[0]);
 		$_ = $string->value; # get perl scalar
 		my @ids = split; # splits $_
 		foreach my $id (@ids) {
-			my $path = $self->{pp}->parse('//*[@id = "'. $id . '"]');
 			if (my $found = $node->getElementById($id)) {
 				$results->push($found);
 			}
 		}
-	}
-	return $results;
-}
-
-# for id() function
-sub _find_id {
-	my $self = shift;
-	my ($node, $id) = @_;
-	my $results = XML::XPath::NodeSet->new();
-	foreach my $kid (@{$node->getChildNodes}) {
-		# check attribs for id
-		foreach my $attr (@{$kid->getAttributes}) {
-			if ($attr->getName eq 'id' && $attr->getValue eq $id) {
-				$results->push($kid);
-			}
-		}
-		# do this child
-		$results->append($self->_find_id($kid, $id));
 	}
 	return $results;
 }

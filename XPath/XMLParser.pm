@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.34 2000/06/09 14:34:51 matt Exp $
+# $Id: XMLParser.pm,v 1.37 2000/08/15 16:17:04 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -22,6 +22,7 @@ my @options = qw(
 		);
 
 my ($_current, $_namespaces_on);
+my %IdNames;
 
 sub new {
 	my $proto = shift;
@@ -33,10 +34,15 @@ sub new {
 
 sub parse {
 	my $self = shift;
+	
+	%IdNames = ();
+	$_current = $_namespaces_on = undef;
+	
 	$self->set_xml($_[0]) if $_[0];
 	my $parser = $self->get_parser || XML::Parser->new(
-			ErrorContext=>2,
-			Namespaces=>1
+			ErrorContext => 2,
+			Namespaces => 1,
+			ParseParamEnt => 1,
 			);
 	$parser->setHandlers(
 			Init => \&parse_init,
@@ -46,6 +52,7 @@ sub parse {
 			Final => \&parse_final,
 			Proc => \&parse_pi,
 			Comment => \&parse_comment,
+			Attlist => \&parse_attlist,
 			);
 	my $toparse;
 	if ($toparse = $self->get_filename) {
@@ -82,6 +89,7 @@ sub buildelement {
 	my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
 	push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
 	my @expanded = map {XML::Parser::Expat::expand_ns_prefix($e, $_)} @prefixes;
+#	warn "current namespaces: ", join(", ", @expanded), "\n";
 	
 	my (%exp_to_pre, %pre_to_exp);
 	
@@ -91,7 +99,7 @@ sub buildelement {
 		@pre_to_exp{@prefixes} = @expanded;
 
 		$prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
-		undef $prefix if $prefix eq '#default';
+		$prefix = '' if $prefix eq '#default';
 	}
 	
 	my @namespaces;
@@ -102,7 +110,8 @@ sub buildelement {
 	}
 	
 SKIP_NS:
-	
+
+	my $elname = $tag;	
 	$tag = "$prefix:$tag" if $prefix;
 	my $node = XML::XPath::Node::Element->new($tag, $prefix);
 	
@@ -110,9 +119,12 @@ SKIP_NS:
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
 		my $namespace = XML::Parser::Expat::namespace($e, $key) || "#default";
 #		warn "<$tag> $key 's namespace is '$namespace'\n";
-		my $newattr = XML::XPath::Node::Attribute->new($key, $val, $exp_to_pre{$namespace});
+		my $prefix = $exp_to_pre{$namespace};
+		my $name = $key; $name = "$prefix:$key" if $prefix;
+		my $newattr = XML::XPath::Node::Attribute->new($name, $val, $prefix);
 		$node->appendAttribute($newattr);
-		if ($key eq 'id') {
+		if (exists($IdNames{$elname}) && ($IdNames{$elname} eq $key)) {
+#			warn "appending Id Element: $val for ", $node->getName, "\n";
 			$e->{DOC_Node}->appendIdElement($val, $node);
 		}
 	}
@@ -178,6 +190,14 @@ sub parse_comment {
 	my ($data) = @_;
 	my $node = XML::XPath::Node::Comment->new($data);
 	$_current->appendChild($node);
+}
+
+sub parse_attlist {
+	my $e = shift;
+	my ($elname, $attname, $type, $default, $fixed) = @_;
+	if ($type eq 'ID') {
+		$IdNames{$elname} = $attname;
+	}
 }
 
 sub as_string {
