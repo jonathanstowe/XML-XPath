@@ -95,17 +95,12 @@ sub my_sub {
 	return (caller(1))[3];
 }
 
-sub parse_path {
+sub parse {
 	my $self = shift;
 	my $path = shift;
 	my $tokens = $self->tokenize($path);
 	my $tree = $self->analyze($tokens);
 	
-	if ($path =~ /^\s*\//) {
-		# path begins with / - root path
-		$tree->set_root;
-	} 
-
 	return $tree;
 }
 
@@ -186,7 +181,7 @@ sub analyze {
 	# XML::XPath::Literal (string)
 	# XML::XPath::Number
 	
-	return $self->extract_loc_path($tokens);
+	return $self->extract_expr($tokens, '');
 }
 
 sub extract_loc_path {
@@ -201,61 +196,60 @@ sub extract_loc_path {
 		last unless @{$tokens};
 		my ($token, $sep) = @{ shift @$tokens };
 #		warn "Token: $token, Sep: $sep\n";
-		if (length $token) {
-			# Handle token
-			if ($sep =~ /^(\/|\[|\/\/|\]|\(|\)|and|or|mod|div|<=|>=| -|\+|,|=|\||)$/) {
-				# A Full Step
-				if ($token eq '.') {
-					push @$loc_path, XML::XPath::Step->new($self, 'self', 'node()');
-				}
-				elsif ($token eq '..') {
-					push @$loc_path, XML::XPath::Step->new($self, 'parent', 'node()');
-				}
-				elsif ($token eq 'processing-instruction' && $sep eq '(') {
-					my ($t, $s) = @{ shift @$tokens };
-					die "processing-instruction token takes only 1 literal parameter"
-							unless $s eq ')';
-					$t =~ s/^(["'])(.*)\1$/$2/;
-					push @$loc_path, 
-							XML::XPath::Step->new($self, 
-								'child', 'processing-instruction', 
-								XML::XPath::Literal->new($t)
-							);
-				}
-				elsif ($token eq 'id' && $sep eq '(') {
-					# dunno what to do here. Bit in brackets could
-					# be an expression... argh!
-					push @$loc_path,
-							XML::XPath::Step->new($self,
-								'child', 'id',
-								$self->extract_expr($tokens, ')')
-							);
-				}
-				elsif ($token =~ /^\@($QName)$/o) {
-					push @$loc_path, XML::XPath::Step->new($self, 'attribute', $1);
-				}
-				elsif ($token =~ /^$QName$/o) {
-					push @$loc_path, XML::XPath::Step->new($self, 'child', $token);
-				}
-				elsif ($token =~ /^\*$/) {
-					push @$loc_path, XML::XPath::Step->new($self, 'child', $token);
-				}
-				elsif ($token =~ /^$NODE_TEST$/o) {
-					push @$loc_path, XML::XPath::Step->new($self, 'child', $1);
-				}
-				elsif ($token =~ /^$AXIS_NAME($QName|\*|$NODE_TEST)$/o) {
-					push @$loc_path, XML::XPath::Step->new($self, $1, $2);
-				}
-				else {
-					die "Invalid step at token '$token'\n";
-				}
+		# Handle token
+		if ($sep =~ /^(\/|\[|\/\/|\]|\(|\)|and|or|mod|div|<=|>=| -|\+|,|=|\||)$/) {
+			# A Full Step
+			if ($token eq '.') {
+				push @$loc_path, XML::XPath::Step->new($self, 'self', 'node()');
 			}
-			else {
-				die "Not a location path near '$token$sep'\n";
+			elsif ($token eq '..') {
+				push @$loc_path, XML::XPath::Step->new($self, 'parent', 'node()');
+			}
+			elsif ($token eq 'processing-instruction' && $sep eq '(') {
+				my ($t, $s) = @{ shift @$tokens };
+				die "processing-instruction token takes only 1 literal parameter"
+						unless $s eq ')';
+				$t =~ s/^(["'])(.*)\1$/$2/;
+				push @$loc_path, 
+						XML::XPath::Step->new($self, 
+							'child', 'processing-instruction', 
+							XML::XPath::Literal->new($t)
+						);
+			}
+			elsif ($token eq 'id' && $sep eq '(') {
+				# dunno what to do here. Bit in brackets could
+				# be an expression... argh!
+				push @$loc_path,
+						XML::XPath::Step->new($self,
+							'child', 'id',
+							$self->extract_expr($tokens, ')')
+						);
+			}
+			elsif ($token =~ /^\@($QName)$/o) {
+				push @$loc_path, XML::XPath::Step->new($self, 'attribute', $1);
+			}
+			elsif ($token =~ /^$QName$/o) {
+				push @$loc_path, XML::XPath::Step->new($self, 'child', $token);
+			}
+			elsif ($token =~ /^\*$/) {
+				push @$loc_path, XML::XPath::Step->new($self, 'child', $token);
+			}
+			elsif ($token =~ /^$NODE_TEST$/o) {
+				push @$loc_path, XML::XPath::Step->new($self, 'child', $1);
+			}
+			elsif ($token =~ /^$AXIS_NAME($QName|\*|$NODE_TEST)$/o) {
+				push @$loc_path, XML::XPath::Step->new($self, $1, $2);
+			}
+			elsif ($token eq '' && $sep eq '/' && @$loc_path == 0) {
+				# root node
+				push @$loc_path, XML::XPath::Root->new();
+			}
+			elsif (length $token) {
+				die "Invalid step at token '$token'\n";
 			}
 		}
 		else {
-			# No token. Can ignore?
+			die "Not a location path near '$token$sep'\n";
 		}
 		
 		# sep always there (because of regexp)
@@ -286,7 +280,8 @@ sub extract_predicate {
 sub extract_expr {
 	my $self = shift;
 	my $tokens = shift;
-	my $terminator = shift || ']';
+	my $terminator = shift;
+	$terminator = ']' unless defined $terminator;
 	
 #	warn "Extract Expr '$terminator'\n";
 	
@@ -312,7 +307,7 @@ sub extract_expr {
 			}
 		}
 		
-		if ($token =~ /^($AXIS_NAME|\@)?($QName|\*|$NODE_TEST|\.\.|\.)$/o && $sep ne '(') {
+		if ($token =~ /^($AXIS_NAME|\@)?($QName|\*|$NODE_TEST|\.\.|\.|)$/o && $sep ne '(') {
 			# location_path
 			unshift @$tokens, [$token, $sep];
 			$expr->set_lhs($self->extract_loc_path($tokens));
@@ -408,12 +403,12 @@ sub extract_func_params {
 			return \@params;
 		}
 		elsif ($sep eq ',') {
-			my $param = $self->extract_expr([[$token, '']]);
+			my $param = $self->extract_expr([[$token, ']']]);
 			push @params, $param if ($param);
 		}
 		else {
 			unshift @$tokens, [$token, $sep];
-			my $param = $self->extract_expr($tokens);
+			my $param = $self->extract_expr($tokens, ',');
 			push @params, $param if ($param);
 		}
 	}

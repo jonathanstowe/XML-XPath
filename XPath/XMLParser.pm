@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.15 2000/01/26 18:18:45 matt Exp $
+# $Id: XMLParser.pm,v 1.16 2000/01/26 20:14:28 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -12,35 +12,35 @@ require Exporter;
 @ISA = ('Exporter');
 
 # All
-sub node_type { 0; }
-sub node_parent { 1; }
-sub node_pos { 2; }
+sub node_type () { 0; }
+sub node_parent () { 1; }
+sub node_pos () { 2; }
 
 # Element
-sub node_prefix { 3; }
-sub node_children { 4; }
-sub node_name { 5; }
-sub node_attribs { 6; }
-sub node_namespaces { 7; }
+sub node_prefix () { 3; }
+sub node_children () { 4; }
+sub node_name () { 5; }
+sub node_attribs () { 6; }
+sub node_namespaces () { 7; }
 
 # Char
-sub node_text { 3; }
+sub node_text () { 3; }
 
 # PI
-sub node_target { 3; }
-sub node_data { 4; }
+sub node_target () { 3; }
+sub node_data () { 4; }
 
 # Comment
-sub node_comment { 3; }
+sub node_comment () { 3; }
 
 # Attribute
-# sub node_prefix { 3; }
-sub node_key { 4; }
-sub node_value { 5; }
+# sub node_prefix () { 3; }
+sub node_key () { 4; }
+sub node_value () { 5; }
 
 # Namespaces
-# sub node_prefix { 3; }
-sub node_expanded { 4; }
+# sub node_prefix () { 3; }
+sub node_expanded () { 4; }
 
 @EXPORT = qw(
 		node_type

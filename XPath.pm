@@ -5,7 +5,7 @@ package XML::XPath;
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.10';
+$VERSION = '0.11';
 
 use XML::XPath::XMLParser;
 use XML::XPath::Parser;
@@ -54,7 +54,7 @@ sub find {
 	}
 	
 	my $parser = XML::XPath::Parser->new();
-	my $parsed_path = $parser->parse_path($path);
+	my $parsed_path = $parser->parse($path);
 	
 #	warn "\n\nPATH: ", $parsed_path->as_string, "\n\n";
 	

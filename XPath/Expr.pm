@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.6 2000/01/25 16:33:54 matt Exp $
+# $Id: Expr.pm,v 1.7 2000/02/10 09:58:59 matt Exp $
 
 package XML::XPath::Expr;
 use XML::XPath::Function;
@@ -154,8 +154,8 @@ sub op_equals {
 		# first set and a node in the second set such
 		# that the result of performing the comparison
 		# on the string-values of the two nodes is true.
-		foreach my $lhnode ($lh_results->get_nodeset) {
-			foreach my $rhnode ($rh_results->get_nodeset) {
+		foreach my $lhnode ($lh_results->get_nodelist) {
+			foreach my $rhnode ($rh_results->get_nodelist) {
 				if (XML::XPath::XMLParser::string_value($lhnode) eq
 						XML::XPath::XMLParser::string_value($rhnode)) {
 					return XML::XPath::Boolean->True;
@@ -185,7 +185,7 @@ sub op_equals {
 		# the comparison on <type>(string_value($node))
 		# is true.
 		if ($other->isa('XML::XPath::Number')) {
-			foreach my $node ($nodeset->get_nodeset) {
+			foreach my $node ($nodeset->get_nodelist) {
 				if ($functioner->_execute('number', $node, $node)->value
 						== $other->value) {
 					return XML::XPath::Boolean->True;
@@ -194,7 +194,7 @@ sub op_equals {
 			return XML::XPath::Boolean->False;
 		}
 		elsif ($other->isa('XML::XPath::Literal')) {
-			foreach my $node ($nodeset->get_nodeset) {
+			foreach my $node ($nodeset->get_nodelist) {
 				if ($functioner->_execute('string', $node, $node)->value
 						eq $other->value) {
 					return XML::XPath::Boolean->True;

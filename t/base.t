@@ -11,12 +11,12 @@ my $pp = XML::XPath::Parser->new();
 if ($pp) { print "ok 2\n"; }
 else { print "not ok 2\n"; }
 
-my $path = $pp->parse_path('.//
+my $path = $pp->parse('.//
 		tag/
 		child::*/
 		processing-instruction("Fred")/
 		id(xml/vccc/bbbb/@fer)/
-		self::node()/
+		self::node()[substr("33", 1, 1)]/
 		attribute::ra[../@gunk] 
 			[(../../@att="va\'l") and (@bert = "geee")]
 			[position() = child::para/fred]
@@ -26,6 +26,8 @@ my $path = $pp->parse_path('.//
 if ($path) { print "ok 3\n"; }
 else { print "not ok 3\n"; }
 
+#$path = $pp->parse('param|title');
+
 warn "PATH: ", $path->as_string, "\n\n";
 
 if ($path->as_string eq q^self::node()/descendant-or-self::node()/child::tag/child::*/self::node()/attribute::ra[(parent::node()/attribute::gunk)][((parent::node()/parent::node()/attribute::att = ('va&apos;l')) and ((attribute::bert = ('geee'))))][(position() = (child::para/child::fred))][(0  - (.3))]/child::geerner[((child::fart | (child::blert))[(child::predicate[(attribute::vee)])])]^) { 
@@ -33,7 +35,7 @@ if ($path->as_string eq q^self::node()/descendant-or-self::node()/child::tag/chi
 }
 else { print "not ok 4\n"; }
 
-my $nodes = $p->find('/timesheet/projects/project/wednesday[2]');
+my $nodes = $p->find('//wednesday');
 
 # warn "$nodes size: ", $nodes->size, "\n";
 

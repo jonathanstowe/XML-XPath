@@ -83,11 +83,13 @@ sub evaluate_node {
 	my $self = shift;
 	my $context = shift;
 	
-	# TODO set axis direction
+	# default direction
+	$self->{pp}->set_direction('forward');
 	
 	my $results = XML::XPath::NodeSet->new();
 	
 	if ($self->{axis} eq 'ancestor') {
+		$self->{pp}->set_direction('reverse');
 		return $results unless $context->[node_parent];
 		if ($self->node_test($context->[node_parent])) {
 			$results->push($context->[node_parent]);
@@ -95,6 +97,7 @@ sub evaluate_node {
 		$results->append($self->evaluate_node($context->[node_parent]));
 	}
 	elsif ($self->{axis} eq 'ancestor-or-self') {
+		$self->{pp}->set_direction('reverse');
 		if ($self->node_test($context)) {
 			$results->push($context);
 		}
@@ -167,18 +170,27 @@ sub evaluate_node {
 		}
 	}
 	elsif ($self->{axis} eq 'preceding') {
-		local $self->{axis} = 'preceding-sibling';
-		$results->append($self->evaluate_node($context));
-		local $self->{axis} = 'ancestor';
-		$results->append($self->evaluate_node($context));
+		$self->{pp}->set_direction('reverse');
+		# all preceding nodes in document order, except ancestors
+		# (go through each sibling, and get decendant-or-self)
+		local $self->{axis} = 'descendant-or-self';
+		my $i = $context->[node_pos];
+		my $ref = 0;
+		while($context->[node_parent][node_children][$ref] ne $context) {
+			$results->append($self->evaluate_node($context->[node_parent][node_children][$ref]));
+			$ref++;
+		}
 	}
 	elsif ($self->{axis} eq 'preceding-sibling') {
+		$self->{pp}->set_direction('reverse');
 		return $results unless $context->[node_parent];
 		my $i = $context->[node_pos];
-		for (my $ref = $i - 1; $ref >= 0; $ref--) {
+		my $ref = 0;
+		while($context->[node_parent]->[node_children]->[$ref] ne $context) {
 			if ($self->test_node($context->[node_parent]->[node_children]->[$ref])) {
 				$results->push($context->[node_parent]->[node_children]->[$ref]);
 			}
+			$ref++;
 		}
 	}
 	elsif ($self->{axis} eq 'self') {
