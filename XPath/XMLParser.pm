@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.46 2001/02/26 14:58:17 matt Exp $
+# $Id: XMLParser.pm,v 1.48 2001/03/08 12:21:18 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -24,6 +24,11 @@ my @options = qw(
 my ($_current, $_namespaces_on);
 my %IdNames;
 
+use vars qw/$xmlns_ns $xml_ns/;
+
+$xmlns_ns = "http://www.w3.org/2000/xmlns/";
+$xml_ns = "http://www.w3.org/XML/1998/namespace";
+
 sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
@@ -35,25 +40,33 @@ sub new {
 sub parse {
     my $self = shift;
     
-    %IdNames = ();
-    $_current = $_namespaces_on = undef;
+    $self->{IdNames} = {};
+    $self->{InScopeNamespaceStack} = [ { 
+            '_Default' => undef,
+            'xmlns' => $xmlns_ns,
+            'xml' => $xml_ns,
+        } ];
+    
+    $self->{NodeStack} = [ ];
     
     $self->set_xml($_[0]) if $_[0];
+    
     my $parser = $self->get_parser || XML::Parser->new(
             ErrorContext => 2,
-            Namespaces => 1,
             ParseParamEnt => 1,
             );
+    
     $parser->setHandlers(
-            Init => \&parse_init,
-            Char => \&parse_char,
-            Start => \&parse_start,
-            End => \&parse_end,
-            Final => \&parse_final,
-            Proc => \&parse_pi,
-            Comment => \&parse_comment,
-            Attlist => \&parse_attlist,
+            Init => sub { $self->parse_init(@_) },
+            Char => sub { $self->parse_char(@_) },
+            Start => sub { $self->parse_start(@_) },
+            End => sub { $self->parse_end(@_) },
+            Final => sub { $self->parse_final(@_) },
+            Proc => sub { $self->parse_pi(@_) },
+            Comment => sub { $self->parse_comment(@_) },
+            Attlist => sub { $self->parse_attlist(@_) },
             );
+    
     my $toparse;
     if ($toparse = $self->get_filename) {
         return $parser->parsefile($toparse);
@@ -70,93 +83,28 @@ sub parsefile {
     $self->parse;
 }
 
-sub buildelement {
-    my ($e, $current, $tag, $attribs) = @_;
-    
-#    local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
-    
-#    ($current, undef, undef, [], $tag);
-#    $node[node_parent] = $current;
-#    $node[node_name] = $tag;
-
-    if (!$_namespaces_on && $XML::XPath::Namespaces && XML::Parser::Expat::current_ns_prefixes($e)) {
-        $_namespaces_on = 1;
-    }
-    
-    my $prefix;
-    my (%exp_to_pre, %pre_to_exp);
-    my @namespaces;
-
-    if ($_namespaces_on) {
-
-        my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
-        push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
-#        warn "Current prefixes: ", join(", ", @prefixes), "\n";
-        my @expanded = map {XML::Parser::Expat::expand_ns_prefix($e, $_)} @prefixes;
-#        warn "current namespaces: ", join(", ", @expanded), "\n";
-
-        {
-            local $^W;
-            @exp_to_pre{@expanded} = @prefixes;
-            %pre_to_exp = reverse %exp_to_pre;
-
-#            warn "$tag namespace is: ", $e->namespace($tag), "\n";
-            $prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag)}; # || '#default'};
-            $prefix = '' if $prefix eq '#default';
-        }
-
-        while (my $pre = shift @prefixes) {
-            my $newns = XML::XPath::Node::Namespace->new($pre, $pre_to_exp{$pre});
-            push @namespaces, $newns;
-        }
-    }
-
-    my $elname = $tag;    
-    $tag = "$prefix:$tag" if $prefix;
-#    warn "Tag: $tag\n";
-    my $node = XML::XPath::Node::Element->new($tag, $prefix);
-    
-    while (@$attribs) {
-        my ($key, $val) = (shift @$attribs, shift @$attribs);
-        my $namespace = XML::Parser::Expat::namespace($e, $key);
-#        warn "<$tag> $key 's namespace is '$namespace'\n";
-        local $^W;
-        my $prefix = $exp_to_pre{$namespace};
-        my $name = $key; $name = "$prefix:$key" if $prefix && $prefix ne '#default';
-        my $newattr = XML::XPath::Node::Attribute->new($name, $val, $prefix);
-        $node->appendAttribute($newattr, 1);
-        if (exists($IdNames{$elname}) && ($IdNames{$elname} eq $key)) {
-#            warn "appending Id Element: $val for ", $node->getName, "\n";
-            $e->{DOC_Node}->appendIdElement($val, $node);
-        }
-    }
-    
-    foreach my $ns (@namespaces) {
-        $node->appendNamespace($ns);
-    }
-
-    return $node;
-}
-
 sub parse_init {
+    my $self = shift;
     my $e = shift;
-    
-    $_current = XML::XPath::Node::Element->new();
-    $e->{DOC_Node} = $_current;
-    $_namespaces_on = 0;
+    my $document = XML::XPath::Node::Element->new();
+    my $newns = XML::XPath::Node::Namespace->new('xml', $xml_ns);
+    $document->appendNamespace($newns);
+    $self->{current} = $self->{DOC_Node} = $document;
 }
 
 sub parse_final {
-    my $e = shift;
-    undef $_current;
-    return $e->{DOC_Node};
+    my $self = shift;
+    return $self->{DOC_Node};
 }
 
 sub parse_char {
+    my $self = shift;
     my $e = shift;
     my $text = shift;
     
-    my $last = $_current->getLastChild;
+    my $parent = $self->{current};
+    
+    my $last = $parent->getLastChild;
     if ($last && $last->isTextNode) {
         # append to previous text node
         $last->appendText($text);
@@ -164,41 +112,105 @@ sub parse_char {
     }
     
     my $node = XML::XPath::Node::Text->new($text);
-    $_current->appendChild($node, 1);
+    $parent->appendChild($node, 1);
 }
 
 sub parse_start {
+    my $self = shift;
     my $e = shift;
     my $tag = shift;
-    my $node = buildelement($e, $_current, $tag, \@_);
-    $_current->appendChild($node, 1);
-    $_current = $node;
+    
+    push @{ $self->{InScopeNamespaceStack} },
+         { %{ $self->{InScopeNamespaceStack}[-1] } };
+    $self->_scan_namespaces(@_);
+    
+    my ($prefix, $namespace) = $self->_namespace($tag);
+    
+    my $node = XML::XPath::Node::Element->new($tag, $prefix);
+    
+    my @attributes;
+    for (my $ii = 0; $ii < $#_; $ii += 2) {
+	my ($name, $value) = ($_[$ii], $_[$ii+1]);
+        if ($name =~ /^xmlns(:(.*))?$/) {
+            # namespace node
+            my $prefix = $2 || '#default';
+#            warn "Creating NS node: $prefix = $value\n";
+            my $newns = XML::XPath::Node::Namespace->new($prefix, $value);
+            $node->appendNamespace($newns);
+        }
+        else {
+	    my ($prefix, $namespace) = $self->_namespace($name);
+            undef $namespace unless $prefix;
+
+            my $newattr = XML::XPath::Node::Attribute->new($name, $value, $prefix);
+            $node->appendAttribute($newattr, 1);
+            if (exists($self->{IdNames}{$tag}) && ($self->{IdNames}{$tag} eq $name)) {
+    #            warn "appending Id Element: $val for ", $node->getName, "\n";
+                $e->{DOC_Node}->appendIdElement($value, $node);
+            }
+        }
+    }
+        
+    $self->{current}->appendChild($node, 1);
+    $self->{current} = $node;
 }
 
 sub parse_end {
+    my $self = shift;
     my $e = shift;
-    $_current = $_current->getParentNode;
+    $self->{current} = $self->{current}->getParentNode;
 }
 
 sub parse_pi {
+    my $self = shift;
     my $e = shift;
     my ($target, $data) = @_;
     my $node = XML::XPath::Node::PI->new($target, $data);
-    $_current->appendChild($node, 1);
+    $self->{current}->appendChild($node, 1);
 }
 
 sub parse_comment {
+    my $self = shift;
     my $e = shift;
     my ($data) = @_;
     my $node = XML::XPath::Node::Comment->new($data);
-    $_current->appendChild($node, 1);
+    $self->{current}->appendChild($node, 1);
 }
 
 sub parse_attlist {
+    my $self = shift;
     my $e = shift;
     my ($elname, $attname, $type, $default, $fixed) = @_;
     if ($type eq 'ID') {
-        $IdNames{$elname} = $attname;
+        $self->{IdNames}{$elname} = $attname;
+    }
+}
+
+sub _scan_namespaces {
+    my ($self, %attributes) = @_;
+
+    while (my ($attr_name, $value) = each %attributes) {
+	if ($attr_name eq 'xmlns') {
+	    $self->{InScopeNamespaceStack}[-1]{'_Default'} = $value;
+	} elsif ($attr_name =~ /^xmlns:(.*)$/) {
+	    my $prefix = $1;
+	    $self->{InScopeNamespaceStack}[-1]{$prefix} = $value;
+	}
+    }
+}
+
+sub _namespace {
+    my ($self, $name) = @_;
+
+    my ($prefix, $localname) = split(/:/, $name);
+    if (!defined($localname)) {
+	if ($prefix eq 'xmlns') {
+	    return '', undef;
+	} else {
+	    return '', $self->{InScopeNamespaceStack}[-1]{'_Default'};
+	}
+    } else {
+	return $prefix, $self->{InScopeNamespaceStack}[-1]{$prefix};
     }
 }
 

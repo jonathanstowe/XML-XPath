@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.11 2000/11/29 17:21:43 matt Exp $
+# $Id: Element.pm,v 1.12 2001/03/07 16:16:40 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -288,11 +288,13 @@ sub getNamespace {
     my $self = shift;
     my ($prefix) = @_;
     $prefix ||= $self->getPrefix || '#default';
-    my $namespaces = $self->[node_namespaces];
-    return unless $namespaces;
+    my $namespaces = $self->[node_namespaces] || [];
     foreach my $ns (@$namespaces) {
         return $ns if $ns->getPrefix eq $prefix;
     }
+    my $parent = $self->getParentNode;
+    
+    return $parent->getNamespace($prefix) if $parent;
 }
 
 sub getNamespaces {
