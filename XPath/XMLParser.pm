@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.25 2000/03/07 20:44:18 matt Exp $
+# $Id: XMLParser.pm,v 1.26 2000/03/20 14:55:28 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -107,12 +107,32 @@ sub parsefile {
 	$self->parse;
 }
 
+sub mkattrib {
+	my ($parent, $key, $val, $prefix) = @_;
+	my @newattr = ($parent, undef, $prefix, $key, $val);
+	return bless(\@newattr, 'attribute');
+}
+
 sub mkelement {
+	my ($parent, $tag) = @_;
+	my @node = ($parent, undef, undef, [], $tag);
+	return bless(\@node, 'element');
+}
+
+sub mknamespace {
+	my ($parent, $prefix, $expanded) = @_;
+	my @node = ($parent, undef, $prefix, $expanded);
+	return bless(\@node, 'namespace');
+}
+
+sub buildelement {
 	my ($e, $current, $tag, $attribs) = @_;
 	
 #	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
 	
-	my @node = ($current, undef, undef, [], $tag);
+	my $node = mkelement($current, $tag);
+	
+#	($current, undef, undef, [], $tag);
 #	$node[node_parent] = $current;
 #	$node[node_name] = $tag;
 
@@ -133,16 +153,13 @@ sub mkelement {
 	
 	my $prefix = $exp_to_pre{$e->namespace($tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
-	$node[node_name] = $prefix ? "$prefix:$tag" : $tag;
+	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
 	
 	while (@prefixes) {
 		my $pre = shift @prefixes;
-		my @newns;
-		$newns[node_parent] = \@node;
-		$newns[node_prefix] = $pre;
-		$newns[node_expanded] = $pre_to_exp{$pre};
-		push @{$node[node_namespaces]}, bless(\@newns, 'namespace');
-		$newns[node_pos] = $#{$node[node_namespaces]};
+		my $newns = mknamespace($node, $pre, $pre_to_exp{$pre});
+		push @{$node->[node_namespaces]}, $newns;
+		$newns->[node_pos] = $#{$node->[node_namespaces]};
 	}
 	
 SKIP_NS:
@@ -150,16 +167,12 @@ SKIP_NS:
 	while (@$attribs) {
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
 		my $namespace = $e->namespace($key) || "#default";
-		my @newattr;
-		$newattr[node_parent] = \@node;
-		$newattr[node_key] = $key;
-		$newattr[node_value] = $val;
-		$newattr[node_prefix] = $exp_to_pre{$namespace};
-		push @{$node[node_attribs]}, bless(\@newattr, 'attribute');
-		$newattr[node_pos] = $#{$node[node_attribs]};
+		my $newattr = mkattrib($node, $key, $val, $exp_to_pre{$namespace});
+		push @{$node->[node_attribs]}, $newattr;
+		$newattr->[node_pos] = $#{$node->[node_attribs]};
 	}
 
-	return bless(\@node, 'element');
+	return $node;
 }
 
 sub parse_init {
@@ -176,6 +189,12 @@ sub parse_final {
 	return $result;
 }
 
+sub mktext {
+	my ($parent, $text) = @_;
+	my @text_node = ($parent, undef, $text);
+	return bless (\@text_node, 'text');
+}
+
 sub parse_char {
 	my $e = shift;
 	my $text = shift;
@@ -186,15 +205,15 @@ sub parse_char {
 		return;
 	}
 	
-	my @node = ($_current, undef, $text);
-	push @{$_current->[node_children]}, bless(\@node, 'text');
-	$node[node_pos] = $#{$_current->[node_children]};
+	my $node = mktext($_current, $text);
+	push @{$_current->[node_children]}, $node;
+	$node->[node_pos] = $#{$_current->[node_children]};
 }
 
 sub parse_start {
 	my $e = shift;
 	my $tag = shift;
-	my $node = mkelement($e, $_current, $tag, \@_);
+	my $node = buildelement($e, $_current, $tag, \@_);
 	push @{$_current->[node_children]}, $node;
 	$node->[node_pos] = $#{$_current->[node_children]};
 	$_current = $node;
@@ -205,20 +224,32 @@ sub parse_end {
 	$_current = $_current->[node_parent];
 }
 
+sub mkpi {
+	my ($parent, $target, $data) = @_;
+	my @node = ($parent, undef, $target, $data);
+	return bless(\@node, 'pi');
+}
+
 sub parse_pi {
 	my $e = shift;
 	my ($target, $data) = @_;
-	my @node = ($_current, undef, $target, $data);
-	push @{$_current->[node_children]}, bless(\@node, 'pi');
-	$node[node_pos] = $#{$_current->[node_children]};
+	my $node = mkpi($_current, $target, $data);
+	push @{$_current->[node_children]}, $node;
+	$node->[node_pos] = $#{$_current->[node_children]};
+}
+
+sub mkcomment {
+	my ($parent, $data) = @_;
+	my @node = ($parent, undef, $data);
+	return bless(\@node, 'comment');
 }
 
 sub parse_comment {
 	my $e = shift;
 	my ($data) = @_;
-	my @node = ($_current, undef, $data);
-	push @{$_current->[node_children]}, bless(\@node, 'comment');
-	$node[node_pos] = $#{$_current->[node_children]};
+	my $node = mkcomment($data);
+	push @{$_current->[node_children]}, $node;
+	$node->[node_pos] = $#{$_current->[node_children]};
 }
 
 sub as_string {

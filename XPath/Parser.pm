@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.14 2000/03/20 10:43:54 matt Exp $
+# $Id: Parser.pm,v 1.15 2000/03/20 14:55:28 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -168,26 +168,7 @@ sub analyze {
 	my $self = shift;
 	my $tokens = shift;
 	# lexical analysis
-	
-	# This bit of code should produce something that looks like:
-	
-	# (ISA XML::XPath::LocationPath)
-	# list of location steps
-	# 	each step is: (ISA XML::XPath::Step)
-	#		axis
-	#		test
-	#		list of predicates
-	#			each predicate is:
-	#				expression (ISA XML::XPath::Expr)
-	#					each expression is:
-	#						(location path|function|variable|literal|number|'('expr')')
-	#						 + (optional operator & expr)
-	
-	# XML::XPath::Function
-	# XML::XPath::Variable
-	# XML::XPath::Literal (string)
-	# XML::XPath::Number
-	
+		
 	return $self->extract_expr($tokens, '');
 }
 
@@ -281,6 +262,7 @@ sub extract_predicate {
 	my $tokens = shift;
 
 #	warn "Extract Predicate\n";
+	
 	return $self->extract_expr($tokens, ']');
 }
 
@@ -301,7 +283,7 @@ sub extract_expr {
 		
 		# Get lhs
 		
-		if ($token eq '' && $sep eq '(') {
+		if ((!defined $token || $token eq '') && $sep eq '(') {
 			# grouping
 			$expr->set_lhs($self->extract_expr($tokens, ')'));
 #			warn "GOT Bracket LHS: ", $expr->get_lhs->as_string, "\n";
@@ -354,6 +336,12 @@ sub extract_expr {
 		
 #		warn "TOKEN: $token, SEP: $sep, TERM: $terminator,\n";
 		last if $sep eq $terminator;
+		
+		if ($sep eq ')' && $terminator eq ',') {
+			# reached end of function params, but got bad terminator/sep match
+			unshift @$tokens, [undef, ')'];
+			last;
+		}
 		
 		# require rhs?
 		if ($token =~ /^(and|or|mod|div)$/) {

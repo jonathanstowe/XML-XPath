@@ -21,4 +21,4 @@ t/base.t
 t/example.t
 t/stress.t
 examples/test.xml
-xpath
+examples/xpath

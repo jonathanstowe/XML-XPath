@@ -1,9 +1,12 @@
-# $Id: Boolean.pm,v 1.2 2000/01/25 16:33:54 matt Exp $
+# $Id: Boolean.pm,v 1.3 2000/03/20 14:47:06 matt Exp $
 
 package XML::XPath::Boolean;
 use XML::XPath::Number;
 use XML::XPath::Literal;
 use strict;
+
+use overload
+		'""' => \&value;
 
 sub True {
 	my $class = shift;

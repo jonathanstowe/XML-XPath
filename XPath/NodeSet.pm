@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.4 2000/03/07 19:34:04 matt Exp $
+# $Id: NodeSet.pm,v 1.5 2000/03/20 14:55:28 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -63,6 +63,13 @@ sub get_nodelist {
 sub to_boolean {
 	my $self = shift;
 	return (@$self > 0) ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
+}
+
+sub to_literal {
+	my $self = shift;
+	return XML::XPath::Literal->new(
+			join('', map { XML::XPath::XMLParser::string_value($_) } @$self)
+			);
 }
 
 1;

@@ -13,6 +13,13 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.20
+
+More bug fixes.
+Moved xpath to examples directory (windows can't cope).
+Added operator overloading so that Number, Literal and Boolean
+can be transparent in user applications.
+
 =item 0.19
 
 (Again - skipped a few changes, bad me)
@@ -58,4 +65,4 @@ This is the first public release
 
 =back
 
-$Id: README,v 1.3 2000/02/28 10:40:02 matt Exp $
+$Id: README,v 1.5 2000/03/20 14:54:53 matt Exp $

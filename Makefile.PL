@@ -12,5 +12,5 @@ WriteMakefile(
 	'PREREQ_PM' => {
 			'XML::Parser' => '2.23',
 			},
-	'EXE_FILES' => [ 'xpath' ],
+	'EXE_FILES' => [ 'examples/xpath' ],
 );

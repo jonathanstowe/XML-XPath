@@ -1,9 +1,13 @@
-# $Id: Literal.pm,v 1.5 2000/01/25 16:33:54 matt Exp $
+# $Id: Literal.pm,v 1.6 2000/03/20 14:46:29 matt Exp $
 
 package XML::XPath::Literal;
 use XML::XPath::Boolean;
 use XML::XPath::Number;
 use strict;
+
+use overload 
+		'""' => \&value,
+		'cmp' => \&cmp;
 
 sub new {
 	my $class = shift;
@@ -25,6 +29,12 @@ sub as_string {
 sub value {
 	my $self = shift;
 	$$self;
+}
+
+sub cmp {
+	my $self = shift;
+	my ($cmp) = @_;
+	$$self cmp $cmp;
 }
 
 sub evaluate {

@@ -1,9 +1,12 @@
-# $Id: Number.pm,v 1.6 2000/01/25 16:33:54 matt Exp $
+# $Id: Number.pm,v 1.7 2000/03/20 14:55:28 matt Exp $
 
 package XML::XPath::Number;
 use XML::XPath::Boolean;
 use XML::XPath::Literal;
 use strict;
+
+use overload
+		'""' => \&value;
 
 sub new {
 	my $class = shift;
