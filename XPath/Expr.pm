@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.9 2000/02/24 19:46:03 matt Exp $
+# $Id: Expr.pm,v 1.11 2000/02/28 10:40:21 matt Exp $
 
 package XML::XPath::Expr;
 use XML::XPath::Function;
@@ -194,7 +194,6 @@ sub op_equals {
 					return XML::XPath::Boolean->True;
 				}
 			}
-			return XML::XPath::Boolean->False;
 		}
 		elsif ($other->isa('XML::XPath::Literal')) {
 			foreach my $node ($nodeset->get_nodelist) {
@@ -203,15 +202,15 @@ sub op_equals {
 					return XML::XPath::Boolean->True;
 				}
 			}
-			return XML::XPath::Boolean->False;
 		}
 		elsif ($other->isa('XML::XPath::Boolean')) {
 			if ($functioner->_execute('boolean', $node, $nodeset)->value
 					== $other->value) {
 				return XML::XPath::Boolean->True;
 			}
-			return XML::XPath::Boolean->False;
 		}			
+
+		return XML::XPath::Boolean->False;
 	}
 	else { # Neither is a nodeset
 		if ($lh_results->isa('XML::XPath::Boolean') ||
@@ -252,47 +251,282 @@ sub op_nequals {
 
 sub op_le {
 	my ($node, $lhs, $rhs) = @_;
-	
+	op_ge($node, $rhs, $lhs);
 }
 
 sub op_ge {
 	my ($node, $lhs, $rhs) = @_;
+
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
 	
+	if ($lh_results->isa('XML::XPath::NodeSet') &&
+		$rh_results->isa('XML::XPath::NodeSet')) {
+
+		foreach my $lhnode ($lh_results->get_nodelist) {
+			foreach my $rhnode ($rh_results->get_nodelist) {
+				my $lhNum = XML::XPath::Number->new(
+						XML::XPath::XMLParser::string_value($lhnode));
+				my $rhNum = XML::XPath::Number->new(
+						XML::XPath::XMLParser::string_value($rhnode));
+				if ($lhNum->value >= $rhNum->value) {
+					return XML::XPath::Boolean->True;
+				}
+			}
+		}
+		return XML::XPath::Boolean->False;
+	}
+	elsif (($lh_results->isa('XML::XPath::NodeSet') ||
+			$rh_results->isa('XML::XPath::NodeSet')) &&
+			(!$lh_results->isa('XML::XPath::NodeSet') ||
+			 !$rh_results->isa('XML::XPath::NodeSet'))) {
+		# (that says: one is a nodeset, and one is not a nodeset)
+
+		my ($nodeset, $other);
+		my ($true, $false);
+		if ($lh_results->isa('XML::XPath::NodeSet')) {
+			$nodeset = $lh_results;
+			$other = $rh_results;
+			# we do this because unlike ==, these ops are direction dependant
+			($false, $true) = (XML::XPath::Boolean->False, XML::XPath::Boolean->True);
+		}
+		else {
+			$nodeset = $rh_results;
+			$other = $lh_results;
+			# ditto above comment
+			($true, $false) = (XML::XPath::Boolean->False, XML::XPath::Boolean->True);
+		}
+		
+		# True if and only if there is a node in the
+		# nodeset such that the result of performing
+		# the comparison on <type>(string_value($node))
+		# is true.
+		if ($other->isa('XML::XPath::Number')) {
+			foreach my $node ($nodeset->get_nodelist) {
+				if ($functioner->_execute('number', $node, $node)->value
+						>= $other->value) {
+					return $true;
+				}
+			}
+		}
+		elsif ($other->isa('XML::XPath::Literal')) {
+			foreach my $node ($nodeset->get_nodelist) {
+				if ($functioner->_execute('string', $node, $node)->to_number->value
+						>= $other->to_number->value) {
+					return $true;
+				}
+			}
+		}
+		elsif ($other->isa('XML::XPath::Boolean')) {
+			if ($functioner->_execute('boolean', $node, $nodeset)->to_number->value
+					>= $other->to_number->value) {
+				return $true;
+			}
+		}			
+		return $false;
+	}
+	else { # Neither is a nodeset
+		if ($lh_results->isa('XML::XPath::Boolean') ||
+			$rh_results->isa('XML::XPath::Boolean')) {
+			# if either is a boolean
+			if ($functioner->_execute('boolean', $node, $lh_results)->to_number->value
+					>= $functioner->_execute('boolean', $node, $rh_results)->to_number->value) {
+				return XML::XPath::Boolean->True;
+			}
+		}
+		elsif ($lh_results->isa('XML::XPath::Number') ||
+				$rh_results->isa('XML::XPath::Number')) {
+			# if either is a number
+			if ($functioner->_execute('number', $node, $lh_results)->value
+					>= $functioner->_execute('number', $node, $rh_results)->value) {
+				return XML::XPath::Boolean->True;
+			}
+		}
+		else {
+			if ($functioner->_execute('string', $node, $lh_results)->to_number->value
+					>= $functioner->_execute('string', $node, $rh_results)->to_number->value) {
+				return XML::XPath::Boolean->True;
+			}
+		}
+		return XML::XPath::Boolean->False;
+	}
 }
 
 sub op_gt {
 	my ($node, $lhs, $rhs) = @_;
+
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
 	
+	if ($lh_results->isa('XML::XPath::NodeSet') &&
+		$rh_results->isa('XML::XPath::NodeSet')) {
+
+		foreach my $lhnode ($lh_results->get_nodelist) {
+			foreach my $rhnode ($rh_results->get_nodelist) {
+				my $lhNum = XML::XPath::Number->new(
+						XML::XPath::XMLParser::string_value($lhnode));
+				my $rhNum = XML::XPath::Number->new(
+						XML::XPath::XMLParser::string_value($rhnode));
+				if ($lhNum->value > $rhNum->value) {
+					return XML::XPath::Boolean->True;
+				}
+			}
+		}
+		return XML::XPath::Boolean->False;
+	}
+	elsif (($lh_results->isa('XML::XPath::NodeSet') ||
+			$rh_results->isa('XML::XPath::NodeSet')) &&
+			(!$lh_results->isa('XML::XPath::NodeSet') ||
+			 !$rh_results->isa('XML::XPath::NodeSet'))) {
+		# (that says: one is a nodeset, and one is not a nodeset)
+
+		my ($nodeset, $other);
+		my ($true, $false);
+		if ($lh_results->isa('XML::XPath::NodeSet')) {
+			$nodeset = $lh_results;
+			$other = $rh_results;
+			# we do this because unlike ==, these ops are direction dependant
+			($false, $true) = (XML::XPath::Boolean->False, XML::XPath::Boolean->True);
+		}
+		else {
+			$nodeset = $rh_results;
+			$other = $lh_results;
+			# ditto above comment
+			($true, $false) = (XML::XPath::Boolean->False, XML::XPath::Boolean->True);
+		}
+		
+		# True if and only if there is a node in the
+		# nodeset such that the result of performing
+		# the comparison on <type>(string_value($node))
+		# is true.
+		if ($other->isa('XML::XPath::Number')) {
+			foreach my $node ($nodeset->get_nodelist) {
+				if ($functioner->_execute('number', $node, $node)->value
+						> $other->value) {
+					return $true;
+				}
+			}
+		}
+		elsif ($other->isa('XML::XPath::Literal')) {
+			foreach my $node ($nodeset->get_nodelist) {
+				if ($functioner->_execute('string', $node, $node)->to_number->value
+						> $other->to_number->value) {
+					return $true;
+				}
+			}
+		}
+		elsif ($other->isa('XML::XPath::Boolean')) {
+			if ($functioner->_execute('boolean', $node, $nodeset)->to_number->value
+					> $other->to_number->value) {
+				return $true;
+			}
+		}			
+		return $false;
+	}
+	else { # Neither is a nodeset
+		if ($lh_results->isa('XML::XPath::Boolean') ||
+			$rh_results->isa('XML::XPath::Boolean')) {
+			# if either is a boolean
+			if ($functioner->_execute('boolean', $node, $lh_results)->to_number->value
+					> $functioner->_execute('boolean', $node, $rh_results)->to_number->value) {
+				return XML::XPath::Boolean->True;
+			}
+		}
+		elsif ($lh_results->isa('XML::XPath::Number') ||
+				$rh_results->isa('XML::XPath::Number')) {
+			# if either is a number
+			if ($functioner->_execute('number', $node, $lh_results)->value
+					> $functioner->_execute('number', $node, $rh_results)->value) {
+				return XML::XPath::Boolean->True;
+			}
+		}
+		else {
+			if ($functioner->_execute('string', $node, $lh_results)->to_number->value
+					> $functioner->_execute('string', $node, $rh_results)->to_number->value) {
+				return XML::XPath::Boolean->True;
+			}
+		}
+		return XML::XPath::Boolean->False;
+	}
 }
 
 sub op_lt {
 	my ($node, $lhs, $rhs) = @_;
-	
+	op_gt($node, $rhs, $lhs);
 }
 
 sub op_plus {
 	my ($node, $lhs, $rhs) = @_;
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
 	
+	my $result =
+		$functioner->_execute('number', $node, $lh_results)->value
+			+
+		$functioner->_execute('number', $node, $rh_results)->value
+			;
+	return XML::XPath::Number->new($result);
 }
 
 sub op_minus {
 	my ($node, $lhs, $rhs) = @_;
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
 	
+	my $result =
+		$functioner->_execute('number', $node, $lh_results)->value
+			-
+		$functioner->_execute('number', $node, $rh_results)->value
+			;
+	return XML::XPath::Number->new($result);
 }
 
 sub op_div {
 	my ($node, $lhs, $rhs) = @_;
-	
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
+
+	my $result;	
+	eval {
+		$result =
+			$functioner->_execute('number', $node, $lh_results)->value
+				/
+			$functioner->_execute('number', $node, $rh_results)->value
+				;
+	};
+	if ($@) {
+		# assume divide by zero
+		# This is probably a terrible way to handle this! 
+		# Ah well... who wants to live forever...
+		return XML::XPath::Literal->new('Infinity');
+	}
+	return XML::XPath::Number->new($result);
 }
 
 sub op_mod {
 	my ($node, $lhs, $rhs) = @_;
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
 	
+	my $result =
+		$functioner->_execute('number', $node, $lh_results)->value
+			%
+		$functioner->_execute('number', $node, $rh_results)->value
+			;
+	return XML::XPath::Number->new($result);
 }
 
 sub op_mult {
 	my ($node, $lhs, $rhs) = @_;
+	my $lh_results = $lhs->evaluate($node);
+	my $rh_results = $rhs->evaluate($node);
 	
+	my $result =
+		$functioner->_execute('number', $node, $lh_results)->value
+			*
+		$functioner->_execute('number', $node, $rh_results)->value
+			;
+	return XML::XPath::Number->new($result);
 }
 
 1;

@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.9 2000/02/14 10:53:15 matt Exp $
+# $Id: Function.pm,v 1.10 2000/02/28 10:40:21 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::XMLParser;
@@ -68,7 +68,7 @@ sub position {
 	my $self = shift;
 	my ($node, @params) = @_;
 	if (@params) {
-		die "position: function doesn't take parameters\n";
+		die "position: function doesn't take parameters [ ", @params, " ]\n";
 	}
 	# return pos relative to axis direction
 	# dunno if this is the right implementation :)

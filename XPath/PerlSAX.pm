@@ -1,4 +1,4 @@
-# $Id: PerlSAX.pm,v 1.5 2000/02/24 19:46:03 matt Exp $
+# $Id: PerlSAX.pm,v 1.6 2000/02/28 10:40:21 matt Exp $
 
 package XML::XPath::PerlSAX;
 use XML::XPath::XMLParser;

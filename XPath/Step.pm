@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.12 2000/02/24 19:46:03 matt Exp $
+# $Id: Step.pm,v 1.13 2000/02/28 10:40:21 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::XMLParser;
@@ -218,27 +218,29 @@ sub node_test {
 	# if node passes test, return true
 
 	return 1 if $self->{test} eq '*'; # True for all nodes of principal type (element)
-	
-	if ($self->{test} eq 'node()') {
-		return 1;
-	}
-	elsif ($self->{test} eq 'text()') {
-		return 1 if ref($node) eq 'text';
-	}
-	elsif ($self->{test} eq 'comment()') {
-		return 1 if ref($node) eq 'comment';
-	}
-	elsif ($self->{test} eq 'processing-instruction()') {
-		warn "Unreachable code???";
-		return 1 if ref($node) eq 'pi';
-	}
-	elsif ($self->{test} eq 'processing-instruction') {
-		return unless ref($node) eq 'pi';
-		if ($self->{literal}->value) {
-			return 1 if $node->[node_target] eq $self->{literal}->value;
-		}
-		else {
+
+	if ($self->{test} =~ /^(node\(\)|text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
+		if ($self->{test} eq 'node()') {
 			return 1;
+		}
+		elsif ($self->{test} eq 'text()') {
+			return 1 if ref($node) eq 'text';
+		}
+		elsif ($self->{test} eq 'comment()') {
+			return 1 if ref($node) eq 'comment';
+		}
+		elsif ($self->{test} eq 'processing-instruction()') {
+			warn "Unreachable code???";
+			return 1 if ref($node) eq 'pi';
+		}
+		elsif ($self->{test} eq 'processing-instruction') {
+			return unless ref($node) eq 'pi';
+			if ($self->{literal}->value) {
+				return 1 if $node->[node_target] eq $self->{literal}->value;
+			}
+			else {
+				return 1;
+			}
 		}
 	}
 
@@ -247,11 +249,18 @@ sub node_test {
 	if ($self->{test} =~ /^$XML::XPath::Parser::NCName$/) {
 		return 1 if $node->[node_name] eq $self->{test};
 	}
-	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName:\*$/) {
+	elsif ($self->{test} =~ /^($XML::XPath::Parser::NCName):\*$/) {
 		# Expand namespace, then match if current node in that ns.
+		# In reality we don't need to expand the prefix...
+		my $nsprefix = $1;
+		return 1 if $node->[node_prefix] eq $nsprefix;
 	}
-	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName\:$XML::XPath::Parser::NCName$/) {
+	elsif ($self->{test} =~ /^($XML::XPath::Parser::NCName)\:($XML::XPath::Parser::NCName)$/) {
 		# Expand namespace, then match if node in that ns and name = NCName
+		# again, we don't really have to expand the prefix...
+		my ($nsprefix, $tag) = ($1, $2);
+		return unless $node->[node_prefix] eq $nsprefix;
+		return 1 if $node->[node_name] eq $tag;
 	}
 	
 	return; # fallthrough returns false

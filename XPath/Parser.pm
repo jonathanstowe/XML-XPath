@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.11 2000/02/24 19:46:03 matt Exp $
+# $Id: Parser.pm,v 1.12 2000/02/28 10:40:21 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -308,6 +308,8 @@ sub extract_expr {
 				($token, $sep) = @{ shift @$tokens };
 			}
 		}
+		
+		next if (!$token);
 		
 		if ($token =~ /^($AXIS_NAME|\@)?($QName|\*|$NODE_TEST|\.\.|\.|)$/o && $sep ne '(') {
 			# location_path

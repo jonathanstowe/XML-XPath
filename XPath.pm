@@ -1,18 +1,18 @@
-# $Id: XPath.pm,v 1.17 2000/02/24 19:45:18 matt Exp $
+# $Id: XPath.pm,v 1.19 2000/02/28 10:40:02 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.15';
+$VERSION = '0.16';
 
 use XML::XPath::XMLParser;
 use XML::XPath::Parser;
 
 # For testing
-use Data::Dumper;
-$Data::Dumper::Indent = 1;
+#use Data::Dumper;
+#$Data::Dumper::Indent = 1;
 
 # Parameters for new()
 my @options = qw(
@@ -60,6 +60,13 @@ sub find {
 	
 #	warn "evaluating path\n";
 	return $parsed_path->evaluate($context);
+}
+
+sub cleanup {
+	my $self = shift;
+	my $context = $self->get_context;
+	return unless $context;
+	XML::XPath::XMLParser::dispose($context);
 }
 
 sub AUTOLOAD {
@@ -132,10 +139,9 @@ simply scan if from left to right and give you
 "(a and (b or (c | (d))))". Yes I know that's annoying - its what you
 get when you build your own parser instead of expecting you to install
 Parse::Yapp and lots of other modules just to support this one. If you
-want precedence then use brackets. They work fine. Secondly, a lot of
-this is unimplemented. Most of the operators are yet to be done. As are
-some of the functions. I hope someone will eventually lend a hand with
-this.
+want precedence then use brackets. They work fine. Secondly some functions
+don't quite fully operate the way the spec says they should - this is
+just because of a lack of tuits on my part and will change eventually.
 
 If you need support for this, see the bottom of this text. I have lots
 of suggestions for caching, speeding things up, and running on a live
@@ -166,23 +172,66 @@ in your application (if, for example, you're doing more than just XPath).
 
 	my $xp = XML::XPath->new( context => $node );
 	
-=head2 I<nodeset> = find(path)
+=head2 I<nodeset> = find($path, [$context])
 
-The find function takes a path (a string) and returns a XML::XPath::NodeSet
-object containing the nodes it found (or empty if no nodes matched the path).
-It should always return something - if you need to check how many nodes it
-found you should check $nodeset->size. See L<XML::XPath::NodeSet>.
+The find function takes an XPath expression (a string) and returns an
+XML::XPath::NodeSet object containing the nodes it found (or empty if
+no nodes matched the path). It should always return something - if you
+need to check how many nodes it found you should check $nodeset->size.
+See L<XML::XPath::NodeSet>. An optional second parameter of a context
+node allows you to use this method repeatedly, for example XSLT needs
+to do this.
+
+=head1 IMPORTANT
+
+The node format used by XML::XPath contains circular references. This
+means that you have to manually delete those references once you're
+done with the entire document tree (don't delete the circular
+references on just part of a tree or you'll get yourself into all sorts
+of trouble!). An example would be if you have a long-running process
+(e.g. mod_perl) that uses this module. If you just did the following
+(this is mod_perl specific, but you should get the idea):
+
+	sub handler {
+		my $r = shift;
+		my $xp = XML::XPath->new( filename => $r->filename );
+		
+		my $nodes = $xp->find("//h1");
+		
+		foreach my $node ($nodes->get_nodelist) {
+			print XML::XPath::XMLParser::as_string($node), "\n\n";
+		}
+	}
+
+You would find your process size growing and growing. You have to
+manually delete those circular references. It's not all bad though -
+I've provided you with a cleanup method that you can use:
+
+	sub handler {
+		my $r = shift;
+		my $xp = XML::XPath->new( filename => $r->filename );
+		
+		my $nodes = $xp->find("//h1");
+		
+		foreach my $node ($nodes->get_nodelist) {
+			print XML::XPath::XMLParser::as_string($node), "\n\n";
+		}
+		$xp->cleanup();
+	}
+
+Beware that nodes are completely useless after they've been disposed
+of.
 
 =head1 Support/Author
 
-This module is copyright 2000 Fastnet Software Ltd. This is free software,
-and as such comes with NO WARRANTY. No dates are used in this module.
-You may distribute this module under the terms of either the Gnu GPL, 
-or under specific licencing from Fastnet Software Ltd. Special free
-licencing consideration will be given to similarly free software. Please
-don't flame me for this licence - I've put a lot of hours into this
-code, and if someone uses my software in their product I expect them
-to have the courtesy to contact me first.
+This module is copyright 2000 Fastnet Software Ltd. This is free
+software, and as such comes with NO WARRANTY. No dates are used in this
+module. You may distribute this module under the terms of either the
+Gnu GPL,  or under specific licencing from Fastnet Software Ltd.
+Special free licencing consideration will be given to similarly free
+software. Please don't flame me for this licence - I've put a lot of
+hours into this code, and if someone uses my software in their product
+I expect them to have the courtesy to contact me first.
 
 Full support for this module is available from Fastnet Software Ltd on
 a pay per incident basis. Alternatively subscribe to the Perl-XML

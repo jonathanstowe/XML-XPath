@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.22 2000/02/24 19:46:03 matt Exp $
+# $Id: XMLParser.pm,v 1.24 2000/02/25 13:19:55 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -12,7 +12,6 @@ require Exporter;
 @ISA = ('Exporter');
 
 # All
-# sub node_type () { 0; }
 sub node_parent () { 0; }
 sub node_pos () { 1; }
 
@@ -28,7 +27,7 @@ sub node_text () { 2; }
 
 # PI
 sub node_target () { 2; }
-sub node_data () { 2; }
+sub node_data () { 3; }
 
 # Comment
 sub node_comment () { 2; }
@@ -45,7 +44,6 @@ sub node_expanded () { 3; }
 @EXPORT = qw(
 		node_parent
 		node_pos
-		node_global_pos
 		node_name
 		node_attribs
 		node_namespaces
@@ -67,7 +65,7 @@ my @options = qw(
 		ioref
 		);
 
-my ($_current, $_last, $_namespaces_on);
+my ($_current, $_namespaces_on);
 
 sub new {
 	my $proto = shift;
@@ -98,13 +96,14 @@ sub parse {
 		return $parser->parsefile($toparse);
 	}
 	else {
-		return $parser->parsefile($self->get_xml || $self->get_ioref);
+		return $parser->parse($self->get_xml || $self->get_ioref);
 	}
 }
 
 sub parsefile {
 	my $self = shift;
-	$self->set_filename($_[0]);
+	my ($filename) = @_;
+	$self->set_filename($filename);
 	$self->parse;
 }
 
@@ -113,19 +112,13 @@ sub mkelement {
 	
 #	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
 	
-	my @node;
-#	$node[node_type] = 'element';
-#	$node[node_type] = 0;
-	$node[node_parent] = $current;
-	$node[node_name] = $tag;
-#	$node[node_attribs] = [];
-#	$node[node_namespaces] = [];
+	my @node = ($current, undef, undef, [], $tag);
+#	$node[node_parent] = $current;
+#	$node[node_name] = $tag;
 
 	if (!$_namespaces_on && $e->namespace($tag)) {
 		$_namespaces_on = 1;
 	}
-	
-	my $node = bless(\@node, 'element');
 	
 	goto SKIP_NS unless $_namespaces_on;
 	
@@ -140,17 +133,16 @@ sub mkelement {
 	
 	my $prefix = $exp_to_pre{$e->namespace($tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
-	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
+	$node[node_name] = $prefix ? "$prefix:$tag" : $tag;
 	
 	while (@prefixes) {
 		my $pre = shift @prefixes;
 		my @newns;
-#		$newns[node_type] = 'namespace';
-		$newns[node_parent] = $node;
+		$newns[node_parent] = \@node;
 		$newns[node_prefix] = $pre;
 		$newns[node_expanded] = $pre_to_exp{$pre};
-		push @{$node->[node_namespaces]}, bless(\@newns, 'namespace');
-		$newns[node_pos] = $#{$node->[node_namespaces]};
+		push @{$node[node_namespaces]}, bless(\@newns, 'namespace');
+		$newns[node_pos] = $#{$node[node_namespaces]};
 	}
 	
 SKIP_NS:
@@ -159,25 +151,29 @@ SKIP_NS:
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
 		my $namespace = $e->namespace($key) || "#default";
 		my @newattr;
-#		$newattr[node_type] = 'attribute';
-		$newattr[node_parent] = $node;
+		$newattr[node_parent] = \@node;
 		$newattr[node_key] = $key;
 		$newattr[node_value] = $val;
 		$newattr[node_prefix] = $exp_to_pre{$namespace};
-		push @{$node->[node_attribs]}, bless(\@newattr, 'attribute');
-		$newattr[node_pos] = $#{$node->[node_attribs]};
+		push @{$node[node_attribs]}, bless(\@newattr, 'attribute');
+		$newattr[node_pos] = $#{$node[node_attribs]};
 	}
 
-	$node->[node_children] = [];
-
-	return $node;
+	return bless(\@node, 'element');
 }
 
 sub parse_init {
 	my $e = shift;
-	undef $_current;
-	undef $_last;
+	
+	$_current = bless [], 'element';
 	$_namespaces_on = 0;
+}
+
+sub parse_final {
+	my $e = shift;
+	my $result = $_current;
+	undef $_current;
+	return $result;
 }
 
 sub parse_char {
@@ -185,15 +181,12 @@ sub parse_char {
 	my $text = shift;
 	
 	if (@{$_current->[node_children]} > 0 && ref $_current->[node_children][-1] eq 'text') {
+		# append to previous text node
 		$_current->[node_children][-1][node_text] .= $text;
 		return;
 	}
 	
-	my @node;
-#	$node[node_type] = 'text';
-#	$node[node_type] = 1;
-	$node[node_parent] = $_current;
-	$node[node_text] = $text;
+	my @node = ($_current, undef, $text);
 	push @{$_current->[node_children]}, bless(\@node, 'text');
 	$node[node_pos] = $#{$_current->[node_children]};
 }
@@ -209,35 +202,13 @@ sub parse_start {
 
 sub parse_end {
 	my $e = shift;
-	$_last = $_current;
 	$_current = $_current->[node_parent];
-}
-
-sub parse_final {
-	my $e = shift;
-	
-#	warn "real root node: ", $_last->[node_type] , ', ', $_last->[node_name], "\n";
-	
-	my $root = bless [], 'element';
-#	$root[node_type] = 'element';
-#	$root[node_type] = 0;
-	$root->[node_children] = [$_last];
-	$_last->[node_parent] = $root;
-	# Make sure we have no circular refs hanging around
-	undef $_current;
-	undef $_last;
-	return $root;
 }
 
 sub parse_pi {
 	my $e = shift;
 	my ($target, $data) = @_;
-	my @node;
-	$node[node_parent] = $_current;
-#	$node[node_type] = 'pi';
-#	$node[node_type] = 3;
-	$node[node_target] = $target;
-	$node[node_data] = $data;
+	my @node = ($_current, undef, $target, $data);
 	push @{$_current->[node_children]}, bless(\@node, 'pi');
 	$node[node_pos] = $#{$_current->[node_children]};
 }
@@ -245,11 +216,7 @@ sub parse_pi {
 sub parse_comment {
 	my $e = shift;
 	my ($data) = @_;
-	my @node;
-	$node[node_parent] = $_current;
-#	$node[node_type] = 'comment';
-#	$node[node_type] = 2;
-	$node[node_comment] = $data;
+	my @node = ($_current, undef, $data);
 	push @{$_current->[node_children]}, bless(\@node, 'comment');
 	$node[node_pos] = $#{$_current->[node_children]};
 }
@@ -356,38 +323,40 @@ sub _element_string_value {
 	return $string;
 }
 
+sub dispose {
+	my $node = shift;
+	if (ref($node) eq 'element' && $node->[node_parent]) {
+		foreach my $attr (@{$node->[node_attribs]}) {
+			undef $attr->[node_parent];
+		}
+		undef $node->[node_attribs];
+		foreach my $ns (@{$node->[node_namespaces]}) {
+			undef $ns->[node_parent];
+		}
+		undef $node->[node_attribs];
+		foreach my $kid (@{$node->[node_children]}) {
+			dispose($kid);
+		}
+		undef $node->[node_children];
+	}
+	elsif (ref($node) eq 'element') {
+		# root node
+		foreach my $kid (@{$node->[node_children]}) {
+			dispose($kid);
+		}
+	}
+	undef $node->[node_parent];
+}
+
 sub get_parser { shift->{_parser}; }
 sub get_filename { shift->{_filename}; }
 sub get_xml { shift->{_xml}; }
 sub get_ioref { shift->{_ioref}; }
 
-=pod
-sub AUTOLOAD {
-	my $self = shift;
-	no strict 'refs';
-	if ($AUTOLOAD =~ /.*::get(_\w+)/) {
-		my $attrib = $1;
-		if (exists $self->{$attrib}) {
-			*{$AUTOLOAD} = sub { return $_[0]->{$attrib}; };
-			return $self->{$attrib};
-		}
-		else {
-			die "No such method $AUTOLOAD";
-		}
-	}
-	if ($AUTOLOAD =~ /.*::set(_\w+)/) {
-		my $attrib = $1;
-		if (exists $self->{$attrib}) {
-			*{$AUTOLOAD} = sub { return $_[0]->{$attrib} = $_[1]; };
-			return $self->{$attrib} = $_[0];
-		}
-		else {
-			die "No such method $AUTOLOAD";
-		}
-	}
-	die "No such method $AUTOLOAD";
-}
-=cut
+sub set_parser { $_[0]->{_parser} = $_[1]; }
+sub set_filename { $_[0]->{_filename} = $_[1]; }
+sub set_xml { $_[0]->{_xml} = $_[1]; }
+sub set_ioref { $_[0]->{_ioref} = $_[1]; }
 
 1;
 
@@ -445,7 +414,7 @@ The root node is just an element node with no parent.
 	  <position in current array>, # node_pos
 	  'xxx', # node_prefix - namespace prefix on this element
 	  [ ... ], # node_children
-	  'yyy', # node_name - element name
+	  'yyy', # node_name - element tag name
 	  [ ... ], # node_attribs - attributes on this element
 	  [ ... ], # node_namespaces - namespaces currently in scope
 	]
@@ -498,6 +467,46 @@ from the xmlns:prefix="..." attribute).
 	  'data', # node_data
 	]
 
+=head1 Usage
+
+If you feel the need to use this module outside of XML::XPath (for example
+you might use this module directly so that you can cache parsed trees), you
+can follow the following API:
+
+=head2 new
+
+The new method takes either no parameters, or any of the following parameters:
+
+		filename
+		xml
+		parser
+		ioref
+
+This uses the familiar hash syntax, so an example might be:
+
+	use XML::XPath::XMLParser;
+	
+	my $parser = XML::XPath::XMLParser->new(filename => 'example.xml');
+
+The parameters represent a filename, a string containing XML, an XML::Parser
+instance and an open filehandle ref respectively. You can also set or get all
+of these properties using the get_ and set_ functions that have the same
+name as the property: e.g. get_filename, set_ioref, etc.
+
+=head2 parse
+
+The parse method generally takes no parameters, however you are free to
+pass either an open filehandle reference or an XML string if you so require.
+The return value is a tree that XML::XPath can use. The parse method will
+die if there is an error in your XML, so be sure to use perl's exception
+handling mechanism (eval{};) if you want to avoid this.
+
+=head2 parsefile
+
+The parsefile method is identical to parse() except it expects a single
+parameter that is a string naming a file to open and parse. Again it
+returns a tree and also dies if there are XML errors.
+
 =head1 Functions
 
 There are a couple of utility function in here, located here because this is
@@ -514,6 +523,20 @@ appropriate escaping, etc.
 
 This returns the "string-value" of a node, as per the spec. It probably doesn't
 need to be used by anyone except people developing XPath routines.
+
+=head2 dispose($node)
+
+This is a B<vitally> important function. If you're building an application
+that uses XML::XPath::XMLParser more than once (i.e. you're retrieving more
+than one tree) then you must dispose of your nodes using this method if
+you don't want them to continue to use memory in your system. This is because
+of Perl's crappy garbage collection system (refcounting) and the circular
+references in the node structure:
+
+	XML::XPath::XMLParser::dispose($node);
+
+This method isn't exported and I don't intend it to ever be that way - I hate
+exporting methods (I make exceptions for the node_ constants in this file).
 
 =head1 NOTICES
 

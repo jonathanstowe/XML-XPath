@@ -30,7 +30,7 @@ else { print "not ok 3\n"; }
 
 warn "PATH: ", $path->as_string, "\n\n";
 
-if ($path->as_string eq q^(self::node()/descendant-or-self::node()/child::tag/child::*/child::processing-instruction('Fred')/child::id((child::xml/child::vccc/child::bbbb/attribute::fer))/self::node()[(substr(('33'),(1),(1)))]/attribute::ra[(parent::node()/attribute::gunk)][((parent::node()/parent::node()/attribute::att = ('va&apos;l')) and ((attribute::bert = ('geee'))))][(position(()) = (child::para/child::fred))][(0  - (.3))]/child::geerner[((child::fart | (child::blert))[(child::predicate[(attribute::vee)])])])^ ) { 
+if ($path->as_string eq q^(self::node()/descendant-or-self::node()/child::tag/child::*/child::processing-instruction('Fred')/child::id((child::xml/child::vccc/child::bbbb/attribute::fer))/self::node()[(substr(('33'),(1),(1)))]/attribute::ra[(parent::node()/attribute::gunk)][((parent::node()/parent::node()/attribute::att = ('va&apos;l')) and ((attribute::bert = ('geee'))))][(position() = (child::para/child::fred))][(.3)]/child::geerner[((child::fart | (child::blert))[(child::predicate[(attribute::vee)])])])^ ) { 
 	print "ok 4\n"; 
 }
 else { print "not ok 4\n"; }
