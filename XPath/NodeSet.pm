@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.15 2001/04/23 21:59:52 matt Exp $
+# $Id: NodeSet.pm,v 1.16 2001/04/30 12:25:59 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -6,7 +6,9 @@ use strict;
 use XML::XPath::Boolean;
 
 use overload 
-		'""' => \&to_literal;
+		'""' => \&to_literal,
+                'bool' => \&to_boolean,
+        ;
 
 sub new {
 	my $class = shift;

@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.23 2001/04/23 22:00:12 matt Exp $
+# $Id: Function.pm,v 1.24 2001/05/06 22:00:52 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -167,7 +167,7 @@ sub string {
     my $self = shift;
     my ($node, @params) = @_;
     die "string: Too many parameters\n" if @params > 1;
-    if ($params[0]) {
+    if (@params) {
         return XML::XPath::Literal->new($params[0]->string_value);
     }
     
@@ -250,7 +250,7 @@ sub string_length {
     my $self = shift;
     my ($node, @params) = @_;
     die "string-length: Wrong number of params\n" if @params > 1;
-    if ($params[0]) {
+    if (@params) {
         return XML::XPath::Number->new(length($params[0]->string_value));
     }
     else {
@@ -265,7 +265,7 @@ sub normalize_space {
     my ($node, @params) = @_;
     die "normalize-space: Wrong number of params\n" if @params > 1;
     my $str;
-    if ($params[0]) {
+    if (@params) {
         $str = $params[0]->string_value;
     }
     else {
@@ -339,7 +339,7 @@ sub number {
     my $self = shift;
     my ($node, @params) = @_;
     die "number: Too many parameters\n" if @params > 1;
-    if ($params[0]) {
+    if (@params) {
         if ($params[0]->isa('XML::XPath::Node')) {
             return XML::XPath::Number->new(
                     $params[0]->string_value

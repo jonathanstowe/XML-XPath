@@ -33,6 +33,7 @@ t/06attrib_val.t
 t/07count.t
 t/08name.t
 t/09string_length.t
+t/09a_string_length.t
 t/10pipe.t
 t/11axischild.t
 t/12axisdescendant.t

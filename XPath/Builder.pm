@@ -1,4 +1,4 @@
-# $Id: Builder.pm,v 1.9 2001/04/01 11:23:47 matt Exp $
+# $Id: Builder.pm,v 1.10 2001/06/12 20:56:56 matt Exp $
 
 package XML::XPath::Builder;
 
@@ -51,7 +51,8 @@ sub end_document {
 
 sub characters {
     my $self = shift;
-    my $text = shift;
+    my $sarg = shift;
+    my $text = $sarg->{Data};
     
     my $parent = $self->{current};
     
@@ -68,7 +69,10 @@ sub characters {
 
 sub start_element {
     my $self = shift;
-    my $tag = shift;
+    my $sarg = shift;
+    my $tag  = $sarg->{'Name'};
+    my $attr = $sarg->{'Attributes'};
+
     push @{ $self->{InScopeNamespaceStack} },
          { %{ $self->{InScopeNamespaceStack}[-1] } };
     $self->_scan_namespaces(@_);
@@ -77,9 +81,9 @@ sub start_element {
     
     my $node = XML::XPath::Node::Element->new($tag, $prefix);
     
-    my @attributes;
-    for (my $ii = 0; $ii < $#_; $ii += 2) {
-	my ($name, $value) = ($_[$ii], $_[$ii+1]);
+    foreach my $name (keys %$attr) {
+	my $value = $attr->{$name};
+
         if ($name =~ /^xmlns(:(.*))?$/) {
             # namespace node
             my $prefix = $2 || '#default';
