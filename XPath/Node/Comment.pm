@@ -23,6 +23,8 @@ sub new {
 
 sub getNodeType { COMMENT_NODE }
 
+sub isCommentNode { 1; }
+
 sub getValue {
 	my $self = shift;
 	$self->[node_comment];

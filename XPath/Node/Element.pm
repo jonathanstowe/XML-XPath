@@ -23,6 +23,8 @@ sub new {
 
 sub getNodeType { ELEMENT_NODE }
 
+sub isElementNode { 1; }
+
 sub appendChild {
 	my $self = shift;
 	my $newnode = shift;

@@ -23,6 +23,8 @@ sub new {
 
 sub getNodeType { TEXT_NODE }
 
+sub isTextNode { 1; }
+
 sub appendText {
 	my $self = shift;
 	my ($text) = @_;

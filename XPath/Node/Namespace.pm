@@ -21,7 +21,9 @@ sub new {
 	bless $self, $class;
 }
 
-sub getNodeType { NAMESPACE_NODE };
+sub getNodeType { NAMESPACE_NODE }
+
+sub isNamespaceNode { 1; }
 
 sub getPrefix {
 	my $self = shift;

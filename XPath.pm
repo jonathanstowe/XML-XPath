@@ -5,7 +5,7 @@ package XML::XPath;
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.50';
+$VERSION = '0.51';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;

@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.2 2000/05/08 16:48:23 matt Exp $
+# $Id: Node.pm,v 1.3 2000/05/11 09:47:46 matt Exp $
 
 package XML::XPath::Node;
 
@@ -219,6 +219,14 @@ sub getNodeType {
 	return XML::XPath::Node::UNKNOWN_NODE;
 }
 
+sub isElementNode {}
+sub isAttributeNode {}
+sub isNamespaceNode {}
+sub isTextNode {}
+sub isProcessingInstructionNode {}
+sub isPINode {}
+sub isCommentNode {}
+
 sub getNodeValue {
 	my $self = shift;
 	return;
@@ -316,6 +324,8 @@ sub to_sax {
 
     $self->_to_sax ($doch, $dtdh, $enth);
 }
+
+sub DESTROY {}
 
 use Carp;
 

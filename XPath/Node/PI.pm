@@ -23,6 +23,9 @@ sub new {
 
 sub getNodeType { PROCESSING_INSTRUCTION_NODE }
 
+sub isPINode { 1; }
+sub isProcessingInstructionNode { 1; }
+
 sub getTarget {
 	my $self = shift;
 	$self->[node_target];

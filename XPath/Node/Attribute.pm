@@ -23,6 +23,8 @@ sub new {
 
 sub getNodeType { ATTRIBUTE_NODE }
 
+sub isAttributeNode { 1; }
+
 sub getName {
 	my $self = shift;
 	$self->[node_key];
