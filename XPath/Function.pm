@@ -159,7 +159,7 @@ sub string {
 	my ($node, @params) = @_;
 	die "string: Too many parameters\n" if @params > 1;
 	if ($params[0]) {
-		if (ref $params[0] eq 'ARRAY') {
+		if (ref($params[0]) =~ /^(element|text|comment|pi|namespace|attribute)$/) {
 			# assume its a node
 			return XML::XPath::Literal->new(
 					XML::XPath::XMLParser::string_value($params[0])

@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.11 2000/02/14 10:53:15 matt Exp $
+# $Id: Step.pm,v 1.12 2000/02/24 19:46:03 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::XMLParser;
@@ -108,7 +108,7 @@ sub evaluate_node {
 		$results->append($self->evaluate_node($context->[node_parent])) if $context->[node_parent];
 	}
 	elsif ($self->{axis} eq 'attribute') {
-		return $results unless $context->[node_type] eq 'element';
+		return $results unless ref($context) eq 'element';
 		foreach my $attrib (@{$context->[node_attribs]}) {
 			if ($self->test_attribute($attrib)) {
 				$results->push($attrib);
@@ -116,7 +116,7 @@ sub evaluate_node {
 		}
 	}
 	elsif ($self->{axis} eq 'child') {
-		return $results unless $context->[node_type] eq 'element';
+		return $results unless ref($context) eq 'element';
 		foreach my $node (@{$context->[node_children]}) {
 			if ($self->node_test($node)) {
 				$results->push($node);
@@ -124,7 +124,7 @@ sub evaluate_node {
 		}
 	}
 	elsif ($self->{axis} eq 'descendant') {
-		return $results unless $context->[node_type] eq 'element';
+		return $results unless ref($context) eq 'element';
 		foreach my $node (@{$context->[node_children]}) {
 			if ($self->node_test($node)) {
 				$results->push($node);
@@ -160,7 +160,7 @@ sub evaluate_node {
 		}
 	}
 	elsif ($self->{axis} eq 'namespace') {
-		return $results unless $context->[node_type] eq 'element';
+		return $results unless ref($context) eq 'element';
 		foreach my $ns (@{$context->[node_namespaces]}) {
 			if ($self->test_namespace($ns)) {
 				$results->push($ns);
@@ -223,17 +223,17 @@ sub node_test {
 		return 1;
 	}
 	elsif ($self->{test} eq 'text()') {
-		return 1 if $node->[node_type] eq 'text';
+		return 1 if ref($node) eq 'text';
 	}
 	elsif ($self->{test} eq 'comment()') {
-		return 1 if $node->[node_type] eq 'comment';
+		return 1 if ref($node) eq 'comment';
 	}
 	elsif ($self->{test} eq 'processing-instruction()') {
 		warn "Unreachable code???";
-		return 1 if $node->[node_type] eq 'pi';
+		return 1 if ref($node) eq 'pi';
 	}
 	elsif ($self->{test} eq 'processing-instruction') {
-		return unless $node->[node_type] eq 'pi';
+		return unless ref($node) eq 'pi';
 		if ($self->{literal}->value) {
 			return 1 if $node->[node_target] eq $self->{literal}->value;
 		}
@@ -242,7 +242,7 @@ sub node_test {
 		}
 	}
 
-	return unless $node->[node_type] eq 'element';
+	return unless ref($node) eq 'element';
 	
 	if ($self->{test} =~ /^$XML::XPath::Parser::NCName$/) {
 		return 1 if $node->[node_name] eq $self->{test};

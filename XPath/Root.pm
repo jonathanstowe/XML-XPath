@@ -1,4 +1,4 @@
-# $Id: Root.pm,v 1.2 2000/01/26 17:06:58 matt Exp $
+# $Id: Root.pm,v 1.3 2000/02/24 19:46:03 matt Exp $
 
 package XML::XPath::Root;
 use strict;

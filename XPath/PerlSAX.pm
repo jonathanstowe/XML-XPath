@@ -1,4 +1,4 @@
-# $Id: PerlSAX.pm,v 1.4 2000/01/26 20:14:28 matt Exp $
+# $Id: PerlSAX.pm,v 1.5 2000/02/24 19:46:03 matt Exp $
 
 package XML::XPath::PerlSAX;
 use XML::XPath::XMLParser;
@@ -18,7 +18,7 @@ sub parse {
 
 	# If there's one arg and it's an array ref, assume it's a node we're parsing
 	my $args;
-	if (@_ == 1 && ref($_[0]) eq 'ARRAY') {
+	if (@_ == 1 && ref($_[0]) =~ /^(text|comment|element|namespace|attribute|pi)$/) {
 #		warn "Parsing node\n";
 		my $node = shift;
 #		warn "PARSING: $node ", XML::XPath::XMLParser::as_string($node), "\n\n";
@@ -51,7 +51,7 @@ sub parse {
 	# cache DocumentHandler in self for callbacks
 	$self->{DocumentHandler} = $parse_options->{DocumentHandler};
 
-	if (($parse_options->{Source}{Node}->[node_type] eq 'element') &&
+	if ((ref($parse_options->{Source}{Node}) eq 'element') &&
 			!($parse_options->{Source}{Node}->[node_parent])) {
 		# Got root node
 		$self->{DocumentHandler}->start_document( { } );
@@ -72,7 +72,7 @@ sub parse_node {
 	my $self = shift;
 	my $node = shift;
 #	warn "parse_node $node\n";
-	if ($node->[node_type] eq 'element' && $node->[node_parent]) {
+	if (ref($node) eq 'element' && $node->[node_parent]) {
 		# bundle up attributes
 		my @attribs;
 		foreach my $attr (@{$node->[node_attribs]}) {
@@ -99,13 +99,13 @@ sub parse_node {
 				}
 			);
 	}
-	elsif ($node->[node_type] eq 'text') {
+	elsif (ref($node) eq 'text') {
 		$self->{DocumentHandler}->characters($node->[node_text]);
 	}
-	elsif ($node->[node_type] eq 'comment') {
+	elsif (ref($node) eq 'comment') {
 		$self->{DocumentHandler}->comment($node->[node_comment]);
 	}
-	elsif ($node->[node_type] eq 'pi') {
+	elsif (ref($node) eq 'pi') {
 		$self->{DocumentHandler}->processing_instruction(
 				{
 					Target => $node->[node_target],
@@ -113,14 +113,14 @@ sub parse_node {
 				}
 			);
 	}
-	elsif ($node->[node_type] eq 'element') { # root node
+	elsif (ref($node) eq 'element') { # root node
 		# just do kids
 		foreach my $kid (@{$node->[node_children]}) {
 			$self->parse_node($kid);
 		}
 	}
 	else {
-		die "Unknown node type: '", $node->[node_type], "' ", scalar(@$node), "\n";
+		die "Unknown node type: '", ref($node), "' ", scalar(@$node), "\n";
 	}
 }
 

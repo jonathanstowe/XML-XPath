@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.20 2000/02/24 19:00:27 matt Exp $
+# $Id: XMLParser.pm,v 1.22 2000/02/24 19:46:03 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -12,38 +12,37 @@ require Exporter;
 @ISA = ('Exporter');
 
 # All
-sub node_type () { 0; }
-sub node_parent () { 1; }
-sub node_pos () { 2; }
+# sub node_type () { 0; }
+sub node_parent () { 0; }
+sub node_pos () { 1; }
 
 # Element
-sub node_prefix () { 3; }
-sub node_children () { 4; }
-sub node_name () { 5; }
-sub node_attribs () { 6; }
-sub node_namespaces () { 7; }
+sub node_prefix () { 2; }
+sub node_children () { 3; }
+sub node_name () { 4; }
+sub node_attribs () { 5; }
+sub node_namespaces () { 6; }
 
 # Char
-sub node_text () { 3; }
+sub node_text () { 2; }
 
 # PI
-sub node_target () { 3; }
-sub node_data () { 4; }
+sub node_target () { 2; }
+sub node_data () { 2; }
 
 # Comment
-sub node_comment () { 3; }
+sub node_comment () { 2; }
 
 # Attribute
-# sub node_prefix () { 3; }
-sub node_key () { 4; }
-sub node_value () { 5; }
+# sub node_prefix () { 2; }
+sub node_key () { 3; }
+sub node_value () { 4; }
 
 # Namespaces
-# sub node_prefix () { 3; }
-sub node_expanded () { 4; }
+# sub node_prefix () { 2; }
+sub node_expanded () { 3; }
 
 @EXPORT = qw(
-		node_type
 		node_parent
 		node_pos
 		node_global_pos
@@ -115,7 +114,7 @@ sub mkelement {
 #	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
 	
 	my @node;
-	$node[node_type] = 'element';
+#	$node[node_type] = 'element';
 #	$node[node_type] = 0;
 	$node[node_parent] = $current;
 	$node[node_name] = $tag;
@@ -125,6 +124,8 @@ sub mkelement {
 	if (!$_namespaces_on && $e->namespace($tag)) {
 		$_namespaces_on = 1;
 	}
+	
+	my $node = bless(\@node, 'element');
 	
 	goto SKIP_NS unless $_namespaces_on;
 	
@@ -139,17 +140,17 @@ sub mkelement {
 	
 	my $prefix = $exp_to_pre{$e->namespace($tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
-	$node[node_name] = $prefix ? "$prefix:$tag" : $tag;
+	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
 	
 	while (@prefixes) {
 		my $pre = shift @prefixes;
 		my @newns;
-		$newns[node_type] = 'namespace';
-		$newns[node_parent] = \@node;
+#		$newns[node_type] = 'namespace';
+		$newns[node_parent] = $node;
 		$newns[node_prefix] = $pre;
 		$newns[node_expanded] = $pre_to_exp{$pre};
-		push @{$node[node_namespaces]}, \@newns;
-		$newns[node_pos] = $#{$node[node_namespaces]};
+		push @{$node->[node_namespaces]}, bless(\@newns, 'namespace');
+		$newns[node_pos] = $#{$node->[node_namespaces]};
 	}
 	
 SKIP_NS:
@@ -158,18 +159,18 @@ SKIP_NS:
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
 		my $namespace = $e->namespace($key) || "#default";
 		my @newattr;
-		$newattr[node_type] = 'attribute';
-		$newattr[node_parent] = \@node;
+#		$newattr[node_type] = 'attribute';
+		$newattr[node_parent] = $node;
 		$newattr[node_key] = $key;
 		$newattr[node_value] = $val;
 		$newattr[node_prefix] = $exp_to_pre{$namespace};
-		push @{$node[node_attribs]}, \@newattr;
-		$newattr[node_pos] = $#{$node[node_attribs]};
+		push @{$node->[node_attribs]}, bless(\@newattr, 'attribute');
+		$newattr[node_pos] = $#{$node->[node_attribs]};
 	}
 
-	$node[node_children] = [];
+	$node->[node_children] = [];
 
-	return \@node;
+	return $node;
 }
 
 sub parse_init {
@@ -183,17 +184,17 @@ sub parse_char {
 	my $e = shift;
 	my $text = shift;
 	
-	if (@{$_current->[node_children]} > 0 && $_current->[node_children][-1][node_type] eq 'text') {
+	if (@{$_current->[node_children]} > 0 && ref $_current->[node_children][-1] eq 'text') {
 		$_current->[node_children][-1][node_text] .= $text;
 		return;
 	}
 	
 	my @node;
-	$node[node_type] = 'text';
+#	$node[node_type] = 'text';
 #	$node[node_type] = 1;
 	$node[node_parent] = $_current;
 	$node[node_text] = $text;
-	push @{$_current->[node_children]}, \@node;
+	push @{$_current->[node_children]}, bless(\@node, 'text');
 	$node[node_pos] = $#{$_current->[node_children]};
 }
 
@@ -217,15 +218,15 @@ sub parse_final {
 	
 #	warn "real root node: ", $_last->[node_type] , ', ', $_last->[node_name], "\n";
 	
-	my @root;
-	$root[node_type] = 'element';
+	my $root = bless [], 'element';
+#	$root[node_type] = 'element';
 #	$root[node_type] = 0;
-	$root[node_children] = [$_last];
-	$_last->[node_parent] = \@root;
+	$root->[node_children] = [$_last];
+	$_last->[node_parent] = $root;
 	# Make sure we have no circular refs hanging around
 	undef $_current;
 	undef $_last;
-	return \@root;
+	return $root;
 }
 
 sub parse_pi {
@@ -233,11 +234,11 @@ sub parse_pi {
 	my ($target, $data) = @_;
 	my @node;
 	$node[node_parent] = $_current;
-	$node[node_type] = 'pi';
+#	$node[node_type] = 'pi';
 #	$node[node_type] = 3;
 	$node[node_target] = $target;
 	$node[node_data] = $data;
-	push @{$_current->[node_children]}, \@node;
+	push @{$_current->[node_children]}, bless(\@node, 'pi');
 	$node[node_pos] = $#{$_current->[node_children]};
 }
 
@@ -246,17 +247,17 @@ sub parse_comment {
 	my ($data) = @_;
 	my @node;
 	$node[node_parent] = $_current;
-	$node[node_type] = 'comment';
+#	$node[node_type] = 'comment';
 #	$node[node_type] = 2;
 	$node[node_comment] = $data;
-	push @{$_current->[node_children]}, \@node;
+	push @{$_current->[node_children]}, bless(\@node, 'comment');
 	$node[node_pos] = $#{$_current->[node_children]};
 }
 
 sub as_string {
 	my $node = shift;
 	my $string;
-	if ($node->[node_type] eq 'element' && $node->[node_parent]) {
+	if (ref $node eq 'element' && $node->[node_parent]) {
 		$string .= "<" . $node->[node_name];
 		
 		foreach my $ns (@{$node->[node_namespaces]}) {
@@ -275,16 +276,16 @@ sub as_string {
 		}
 		$string .= "</" . $node->[node_name] . ">";
 	}
-	elsif ($node->[node_type] eq 'text') {
+	elsif (ref $node eq 'text') {
 		$string .= XML::Parser::Expat->xml_escape($node->[node_text]);
 	}
-	elsif ($node->[node_type] eq 'comment') {
+	elsif (ref $node eq 'comment') {
 		$string .= '<!--' . $node->[node_comment] . '-->';
 	}
-	elsif ($node->[node_type] eq 'pi') {
+	elsif (ref $node eq 'pi') {
 		$string .= "<?" . $node->[node_target] . " " . XML::Parser::Expat->xml_escape($node->[node_data]) . "?>";
 	}
-	elsif ($node->[node_type] eq 'namespace') {
+	elsif (ref $node eq 'namespace') {
 		return '' unless defined $node->[node_expanded];
 		if ($node->[node_prefix] eq '#default') {
 			$string .= ' xmlns="';
@@ -295,7 +296,7 @@ sub as_string {
 		$string .= XML::Parser::Expat->xml_escape($node->[node_expanded]);
 		$string .= '"';
 	}
-	elsif ($node->[node_type] eq 'attribute') {
+	elsif (ref $node eq 'attribute') {
 		$string .= ' ';
 		if ($node->[node_prefix]) {
 			$string .= ' ' . $node->[node_prefix] . ':';
@@ -305,37 +306,37 @@ sub as_string {
 					XML::Parser::Expat->xml_escape($node->[node_value], '"'),
 					'"');
 	}
-	elsif ($node->[node_type] eq 'element') {
+	elsif (ref $node eq 'element') {
 		# just do kids for root node
 		foreach my $kid (@{$node->[node_children]}) {
 			$string .= as_string($kid);
 		}
 	}
 	else {
-		die "Unknown node type : $node->[node_type]";
+		die "Unknown node type : ", ref($node);
 	}
 	return $string;
 }
 
 sub string_value {
 	my $node = shift;
-	if ($node->[node_type] eq 'element') {
+	if (ref $node eq 'element') {
 		return _element_string_value($node);
 	}
-	elsif ($node->[node_type] eq 'text') {
+	elsif (ref $node eq 'text') {
 		# This is a guess - the spec leave it undefined.
 		return $node->[node_text];
 	}
-	elsif ($node->[node_type] eq 'comment') {
+	elsif (ref $node eq 'comment') {
 		return $node->[node_comment];
 	}
-	elsif ($node->[node_type] eq 'attribute') {
+	elsif (ref $node eq 'attribute') {
 		return $node->[node_value];
 	}
-	elsif ($node->[node_type] eq 'namespace') {
+	elsif (ref $node eq 'namespace') {
 		return $node->[node_expanded];
 	}
-	elsif ($node->[node_type] eq 'pi') {
+	elsif (ref $node eq 'pi') {
 		# This is a guess - the spec leaves it undefined.
 		return $node->[node_data];
 	}
@@ -345,10 +346,10 @@ sub _element_string_value {
 	my $node = shift;
 	my $string;
 	foreach my $kid (@{$node->[node_children]}) {
-		if ($kid->[node_type] eq 'element') {
+		if (ref $kid eq 'element') {
 			$string .= _element_string_value($kid);
 		}
-		elsif ($kid->[node_type] eq 'text') {
+		elsif (ref $kid eq 'text') {
 			$string .= $kid->[node_text];
 		}
 	}
@@ -417,9 +418,9 @@ make good sense here where we know the attributes of each type of node.
 
 =head1 Node Structure
 
-All nodes have the same first 3 entries in the array: node_type, node_parent
-and node_pos. The node_type entry contains a string saying what type the current
-node is. The node_parent always contains an entry for the parent of the current
+All nodes have the same first 2 entries in the array: node_parent
+and node_pos. The type of the node is determined using the ref() function.
+The node_parent always contains an entry for the parent of the current
 node - except for the root node which has undef in there. And node_pos is the
 position of this node in the array that it is in (think: 
 $node == $node->[node_parent]->[node_children]->[$node->[node_pos]] )
@@ -430,7 +431,7 @@ Nodes are structured as follows:
 
 The root node is just an element node with no parent.
 
-	[ 'element', # node_type
+	[
 	  undef, # node_parent - check for undef to identify root node
 	  undef, # node_pos
 	  undef, # node_prefix
@@ -439,7 +440,7 @@ The root node is just an element node with no parent.
 
 =head2 Element Node
 
-	[ 'element', # node_type
+	[
 	  $parent, # node_parent
 	  <position in current array>, # node_pos
 	  'xxx', # node_prefix - namespace prefix on this element
@@ -451,7 +452,7 @@ The root node is just an element node with no parent.
 
 =head2 Attribute Node
 
-	[ 'attribute', # node_type
+	[
 	  $parent, # node_parent - the element node
 	  <position in current array>, # node_pos
 	  'xxx', # node_prefix - namespace prefix on this element
@@ -465,7 +466,7 @@ Each element has an associated set of namespace nodes that are currently
 in scope. Each namespace node stores a prefix and the expanded name (retrieved
 from the xmlns:prefix="..." attribute).
 
-	[ 'namespace',
+	[
 	  $parent,
 	  <pos>,
 	  'a', # node_prefix - the namespace as it was written as a prefix
@@ -474,7 +475,7 @@ from the xmlns:prefix="..." attribute).
 
 =head2 Text Nodes
 
-	[ 'text',
+	[
 	  $parent,
 	  <pos>,
 	  'This is some text' # node_text - the text in the node
@@ -482,7 +483,7 @@ from the xmlns:prefix="..." attribute).
 
 =head2 Comment Nodes
 
-	[ 'comment',
+	[
 	  $parent,
 	  <pos>,
 	  'This is a comment' # node_comment
@@ -490,7 +491,7 @@ from the xmlns:prefix="..." attribute).
 
 =head2 Processing Instruction Nodes
 
-	[ 'pi',
+	[
 	  $parent,
 	  <pos>,
 	  'target', # node_target

@@ -1,4 +1,4 @@
-# $Id: Builder.pm,v 1.1 2000/02/18 15:17:59 matt Exp $
+# $Id: Builder.pm,v 1.2 2000/02/24 19:46:03 matt Exp $
 
 package XML::XPath::Builder;
 
@@ -21,22 +21,25 @@ sub new {
 
 sub mkelement {
 	my ($self, $current, $tag, $attribs) = @_;
-	my $atnodes;
-	while (@$attribs) {
-		my ($key, $val) = (shift @$attribs, shift @$attribs);
-		#my $namespace = $e->namespace($key) || "#default";
-		my $namespace = "#default";
-		$atnodes->{$key}->{$namespace} = $val;
-	}
 	
-	my $node;
-	$node->[node_type] = 'element';
+	my $node = bless [], 'element';
+	
 	$node->[node_parent] = $current;
 	$node->[node_name] = $tag;
-	$node->[node_attribs] = $atnodes;
-	$node->[node_namespace] = "#default";
+	$node->[node_prefix] = "#default";
 	#$node->[node_namespace] = $e->namespace($tag);
 	$node->[node_children] = [];
+	
+	while (@$attribs) {
+		my ($key, $val) = (shift @$attribs, shift @$attribs);
+		my @newattr;
+		$newattr[node_parent] = $node;
+		$newattr[node_key] = $key;
+		$newattr[node_value] = $val;
+		$newattr[node_prefix] = "#default";
+		push @{$node->[node_attribs]}, bless(\@newattr, 'attribute');
+		$newattr[node_pos] = $#{$node->[node_attribs]};
+	}
 	
 	return $node;
 }
@@ -48,57 +51,59 @@ sub start_document {
 sub characters {
 	my $self = shift;
 	my $characters = shift;
-	my $node;
-	$node->[node_type] = 'text';
-	$node->[node_parent] = $self->{Current};
-	$node->[node_text] = $characters->{Data};
-	push @{$self->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$self->{Current}->[node_children]};
+	my @node;
+	$node[node_parent] = $self->{Current};
+	$node[node_text] = $characters->{Data};
+	push @{$self->{Current}->[node_children]}, bless(\@node, 'text');
+	$node[node_pos] = $#{$self->{Current}->[node_children]};
 }
 
 sub start_element {
 	my $self = shift;
 	my $element = shift;
-	warn "Start $tag->{'Name'}\n";
 	my $node = mkelement($self, $self->{Current}, $element->{Name}, $element->{Attributes});
 	push @{$self->{Current}->[node_children]}, $node;
 	$node->[node_pos] = $#{$self->{Current}->[node_children]};
-	warn "Node name = ", $node->[node_name], "\n";
 	$self->{Current} = $node;
 }
 
 sub end_element {
 	my $self = shift;
-	$self->{Current} = $self->{Current}->[node_parent] if $self->{Current}->[node_parent];
+	$self->{Last} = $self->{Current};
+	$self->{Current} = $self->{Current}->[node_parent];
 }
 
 sub end_document {
 	my $self = shift;
-	warn "Root node = ", $self->{Current}->[node_name], "\n";
-	return $self->{Current};
+	my $root = bless [], 'element';
+	
+	$root->[node_children] = [$self->{Last}];
+	$self->{Last}->[node_parent] = $root;
+	
+	delete $self->{Last};
+	delete $self->{Current};
+	return $root;
 }
 
 sub processing_instruction {
 	my $self = shift;
 	my $pi = shift;
-	my $node;
-	$node->[node_parent] = $self->{Current};
-	$node->[node_type] = 'pi';
-	$node->[node_target] = $pi->{Target};
-	$node->[node_data] = $pi->{Data};
-	push @{$self->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$self->{Current}->[node_children]};
+	my @node;
+	$node[node_parent] = $self->{Current};
+	$node[node_target] = $pi->{Target};
+	$node[node_data] = $pi->{Data};
+	push @{$self->{Current}->[node_children]}, bless(\@node, 'pi');
+	$node[node_pos] = $#{$self->{Current}->[node_children]};
 }
 
 sub comment {
 	my $self = shift;
 	my $comment = shift;
-	my $node;
-	$node->[node_parent] = $self->{Current};
-	$node->[node_type] = 'comment';
-	$node->[node_comment] = $comment->{Data};
-	push @{$self->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$self->{Current}->[node_children]};
+	my @node;
+	$node[node_parent] = $self->{Current};
+	$node[node_comment] = $comment->{Data};
+	push @{$self->{Current}->[node_children]}, bless(\@node, 'comment');
+	$node[node_pos] = $#{$self->{Current}->[node_children]};
 }
 
 1;
