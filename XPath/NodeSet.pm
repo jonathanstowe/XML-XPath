@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.13 2000/08/24 16:22:58 matt Exp $
+# $Id: NodeSet.pm,v 1.14 2001/04/01 16:57:07 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -15,42 +15,42 @@ sub new {
 
 sub sort {
     my $self = shift;
-    @$self = sort { $a->get_global_pos <=> $b->get_global_pos } @$self;
+    @$self = CORE::sort { $a->get_global_pos <=> $b->get_global_pos } @$self;
     return $self;
 }
 
 sub pop {
 	my $self = shift;
-	pop @$self;
+	CORE::pop @$self;
 }
 
 sub push {
 	my $self = shift;
 	my (@nodes) = @_;
-	push @$self, @nodes;
+	CORE::push @$self, @nodes;
 }
 
 sub append {
 	my $self = shift;
 	my ($nodeset) = @_;
-	push @$self, $nodeset->get_nodelist;
+	CORE::push @$self, $nodeset->get_nodelist;
 }
 
 sub shift {
 	my $self = shift;
-	shift @$self;
+	CORE::shift @$self;
 }
 
 sub unshift {
 	my $self = shift;
 	my (@nodes) = @_;
-	unshift @$self, @nodes;
+	CORE::unshift @$self, @nodes;
 }
 
 sub prepend {
 	my $self = shift;
 	my ($nodeset) = @_;
-	unshift @$self, $nodeset->get_nodelist;
+	CORE::unshift @$self, $nodeset->get_nodelist;
 }
 
 sub size {

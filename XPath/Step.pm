@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.34 2001/03/16 11:19:17 matt Exp $
+# $Id: Step.pm,v 1.35 2001/04/01 16:56:40 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -176,6 +176,7 @@ sub evaluate_node {
         die "axis $method not implemented [$@]\n";
     }
     
+#    warn("results: ", join('><', map {$_->string_value} @$results), "\n");
     # filter initial nodeset by each predicate
     foreach my $predicate (@{$self->{predicates}}) {
         $results = $self->filter_by_predicate($results, $predicate);
@@ -243,7 +244,7 @@ sub axis_descendant {
     while (@stack) {
         my $node = pop @stack;
         if (node_test($self, $node)) {
-            $results->push($node);
+            $results->unshift($node);
         }
         push @stack, $node->getChildNodes;
     }
@@ -258,7 +259,7 @@ sub axis_descendant_or_self {
     while (@stack) {
         my $node = pop @stack;
         if (node_test($self, $node)) {
-            $results->push($node);
+            $results->unshift($node);
         }
         push @stack, $node->getChildNodes;
     }

@@ -51,6 +51,8 @@ t/24namespaces.t
 t/25scope.t
 t/26predicate.t
 t/27asxml.t
+t/28ancestor2.t
+t/29desc_with_predicate.t
 t/rdf.t
 t/remove.t
 t/insert.t
