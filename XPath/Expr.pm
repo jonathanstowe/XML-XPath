@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.7 2000/02/10 09:58:59 matt Exp $
+# $Id: Expr.pm,v 1.8 2000/02/14 10:53:15 matt Exp $
 
 package XML::XPath::Expr;
 use XML::XPath::Function;
@@ -17,6 +17,7 @@ sub new {
 
 sub as_string {
 	my $self = shift;
+	local $^W; # Use of uninitialized value! grrr
 	my $string = "(" . $self->{lhs}->as_string;
 	$string .= " " . $self->{op} . " " if defined $self->{op};
 	$string .= $self->{rhs}->as_string if defined $self->{rhs};
@@ -57,6 +58,8 @@ sub evaluate {
 	
 	# If there's an op, result is result of that op.
 	# If no op, just resolve Expr
+	
+#	warn "Evaluate Expr: ", $self->as_string, "\n";
 	
 	if ($self->{op}) {
 		die ("No RHS of ", $self->as_string) unless $self->{rhs};

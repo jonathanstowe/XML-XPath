@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.8 2000/01/26 17:06:58 matt Exp $
+# $Id: Function.pm,v 1.9 2000/02/14 10:53:15 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::XMLParser;
@@ -159,6 +159,12 @@ sub string {
 	my ($node, @params) = @_;
 	die "string: Too many parameters\n" if @params > 1;
 	if ($params[0]) {
+		if (ref $params[0] eq 'ARRAY') {
+			# assume its a node
+			return XML::XPath::Literal->new(
+					XML::XPath::XMLParser::string_value($params[0])
+					);
+		}
 		return $params[0]->to_literal;
 	}
 	

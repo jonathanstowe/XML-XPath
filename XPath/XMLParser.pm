@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.16 2000/01/26 20:14:28 matt Exp $
+# $Id: XMLParser.pm,v 1.18 2000/02/19 13:49:05 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -109,6 +109,8 @@ sub parsefile {
 
 sub mkelement {
 	my ($e, $current, $tag, $attribs) = @_;
+	
+	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
 	
 	my @prefixes = $e->current_ns_prefixes();
 	push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
@@ -251,6 +253,7 @@ sub as_string {
 		$string .= "<?" . $node->[node_target] . " " . XML::Parser::Expat->xml_escape($node->[node_data]) . "?>";
 	}
 	elsif ($node->[node_type] eq 'namespace') {
+		return unless defined $node->[node_expanded];
 		if ($node->[node_prefix] eq '#default') {
 			$string .= ' xmlns="';
 		}
@@ -261,6 +264,7 @@ sub as_string {
 		$string .= '"';
 	}
 	elsif ($node->[node_type] eq 'attribute') {
+		$string .= ' ';
 		if ($node->[node_prefix]) {
 			$string .= ' ' . $node->[node_prefix] . ':';
 		}
@@ -276,7 +280,7 @@ sub as_string {
 		}
 	}
 	else {
-		die "Unknown node type";
+		die "Unknown node type : $node->[node_type]";
 	}
 	return $string;
 }

@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.10 2000/01/26 17:06:58 matt Exp $
+# $Id: Step.pm,v 1.11 2000/02/14 10:53:15 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::XMLParser;
@@ -85,6 +85,8 @@ sub evaluate_node {
 	
 	# default direction
 	$self->{pp}->set_direction('forward');
+	
+#	warn "Evaluate node: $self->{axis}\n";
 	
 	my $results = XML::XPath::NodeSet->new();
 	
@@ -206,6 +208,8 @@ sub node_test {
 	my $self = shift;
 	my $node = shift;
 	
+#	warn "node_test: $self->{test}\n";
+	
 	# if node passes test, return true
 
 	return 1 if $self->{test} eq '*'; # True for all nodes of principal type (element)
@@ -251,6 +255,9 @@ sub node_test {
 sub test_attribute {
 	my $self = shift;
 	my $node = shift;
+	
+#	warn "test_attrib: $self->{test}\n";
+#	warn "node type: $node->[node_type]\n";
 	
 	return 1 if $self->{test} eq '*';
 
@@ -313,6 +320,8 @@ sub filter_by_predicate {
 	if (!$nodeset) {
 		die "No nodeset!!!";
 	}
+	
+#	warn "Filter by predicate: $predicate\n";
 	
 	my $newset = XML::XPath::NodeSet->new();
 	

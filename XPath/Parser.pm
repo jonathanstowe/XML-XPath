@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.9 2000/01/26 17:06:58 matt Exp $
+# $Id: Parser.pm,v 1.10 2000/02/14 10:53:15 matt Exp $
 
 package XML::XPath::Parser;
 
