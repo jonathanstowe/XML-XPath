@@ -13,6 +13,14 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.54
+
+Added id() speedup code
+
+=item 0.53
+
+Bug fixes.
+
 =item 0.52
 
 Bug fixes.
@@ -93,4 +101,4 @@ This is the first public release
 
 =back
 
-$Id: README,v 1.12 2000/05/16 16:53:09 matt Exp $
+$Id: README,v 1.13 2000/06/09 14:35:39 matt Exp $

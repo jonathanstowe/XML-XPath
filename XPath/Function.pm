@@ -1,10 +1,11 @@
-# $Id: Function.pm,v 1.15 2000/06/08 13:00:23 matt Exp $
+# $Id: Function.pm,v 1.16 2000/06/09 14:34:51 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
 use XML::XPath::Literal;
 use XML::XPath::Boolean;
 use XML::XPath::NodeSet;
+use XML::XPath::Node::Attribute;
 use strict;
 
 sub new {
@@ -110,7 +111,9 @@ sub id {
 		my @ids = split; # splits $_
 		foreach my $id (@ids) {
 			my $path = $self->{pp}->parse('//*[@id = "'. $id . '"]');
-			$results->append($path->evaluate($node));
+			if (my $found = $node->getElementById($id)) {
+				$results->push($found);
+			}
 		}
 	}
 	return $results;

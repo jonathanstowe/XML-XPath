@@ -1,4 +1,4 @@
-# $Id: Root.pm,v 1.4 2000/05/08 13:08:01 matt Exp $
+# $Id: Root.pm,v 1.5 2000/06/09 14:34:51 matt Exp $
 
 package XML::XPath::Root;
 use strict;
@@ -24,13 +24,8 @@ sub evaluate {
 	# must only ever occur on 1 node
 	die "Can't go to root on > 1 node!" unless $nodeset->size == 1;
 	
-	my $node = $nodeset->get_node(1);
-	while(my $parent = $node->getParentNode) {
-		$node = $parent;
-	}
-	
 	my $newset = XML::XPath::NodeSet->new();
-	$newset->push($node);
+	$newset->push($nodeset->get_node(1)->getRootNode());
 	return $newset;
 }
 

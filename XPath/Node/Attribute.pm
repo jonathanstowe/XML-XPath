@@ -1,4 +1,4 @@
-# $Id: Attribute.pm,v 1.3 2000/05/16 16:54:04 matt Exp $
+# $Id: Attribute.pm,v 1.4 2000/06/09 14:34:53 matt Exp $
 
 package XML::XPath::Node::Attribute;
 
@@ -19,6 +19,7 @@ sub new {
 	
 	my $self = [undef, undef, $prefix, $key, $val];
 	bless $self, $class;
+	
 }
 
 sub getNodeType { ATTRIBUTE_NODE }

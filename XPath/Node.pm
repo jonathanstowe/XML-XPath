@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.4 2000/05/16 16:53:37 matt Exp $
+# $Id: Node.pm,v 1.5 2000/06/09 14:34:51 matt Exp $
 
 package XML::XPath::Node;
 
@@ -235,6 +235,21 @@ sub getNodeValue {
 sub getParentNode {
 	my $self = shift;
 	return $self->[XML::XPath::Node::node_parent];
+}
+
+sub getRootNode {
+	my $self = shift;
+	while (my $parent = $self->getParentNode) {
+		$self = $parent;
+	}
+	return $self;
+}
+
+sub getElementById {
+	my $self = shift;
+	my ($id) = @_;
+	my $root = $self->getRootNode;
+	return $root->[7]{$id};
 }
 
 sub getName { }

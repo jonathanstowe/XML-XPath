@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.33 2000/05/16 16:53:37 matt Exp $
+# $Id: XMLParser.pm,v 1.34 2000/06/09 14:34:51 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -112,6 +112,9 @@ SKIP_NS:
 #		warn "<$tag> $key 's namespace is '$namespace'\n";
 		my $newattr = XML::XPath::Node::Attribute->new($key, $val, $exp_to_pre{$namespace});
 		$node->appendAttribute($newattr);
+		if ($key eq 'id') {
+			$e->{DOC_Node}->appendIdElement($val, $node);
+		}
 	}
 	
 	foreach my $ns (@namespaces) {

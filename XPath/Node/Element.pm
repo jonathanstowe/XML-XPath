@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.3 2000/05/16 16:54:04 matt Exp $
+# $Id: Element.pm,v 1.4 2000/06/09 14:34:53 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -32,6 +32,13 @@ sub appendChild {
 	push @{$self->[node_children]}, $newnode;
 	$newnode->setParentNode($self);
 	$newnode->set_pos($#{$self->[node_children]});
+}
+
+sub appendIdElement {
+	my $self = shift;
+	my ($val, $element) = @_;
+#	warn "Adding '$val' to ID hash\n";
+	$self->[7]{$val} = $element;
 }
 
 sub DESTROY {
