@@ -18,16 +18,16 @@ ok(@bbb, 2);
 
 __DATA__
 <AAA>
-<BBB/>
-<CCC/>
-<BBB/>
-<CCC/>
-<BBB/>
-        <!-- comment -->
-<DDD>
-<BBB/>
-Text
-<BBB/>
-</DDD>
-<CCC/>
+    <BBB/>
+    <CCC/>
+    <BBB/>
+    <CCC/>
+    <BBB/>
+    <!-- comment -->
+    <DDD>
+        <BBB/>
+        Text
+        <BBB/>
+    </DDD>
+    <CCC/>
 </AAA>

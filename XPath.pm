@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.40 2000/10/02 08:27:13 matt Exp $
+# $Id: XPath.pm,v 1.43 2000/11/30 16:36:36 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '1.02';
+$VERSION = '1.03';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -30,6 +30,9 @@ sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
     my %args = @_;
+    if ($args{filename} && (!-e $args{filename} || !-r $args{filename})) {
+        die "Cannot open file '$args{filename}'";
+    }
     my %hash = map(( "_$_" => $args{$_} ), @options);
     $hash{path_parser} = XML::XPath::Parser->new();
     return bless \%hash, $class;
@@ -107,10 +110,14 @@ sub findnodes_as_string {
     my $results = $self->find($path, $context);
     
     if ($results->isa('XML::XPath::NodeSet')) {
-        return $results->to_literal->value;
+        return join('', map { $_->toString } $results->get_nodelist);
     }
-    
-    return $results->value;
+    elsif ($results->isa('XML::XPath::Node')) {
+        return $results->toString;
+    }
+    else {
+        return XML::XPath::Node::XMLescape($results->value);
+    }
 }
 
 sub findvalue {
@@ -378,12 +385,8 @@ I expect them to have the courtesy to contact me first.
 
 Full support for this module is available from Fastnet Software Ltd on
 a pay per incident basis. Alternatively subscribe to the Perl-XML
-mailing list by mailing lyris@activestate.com with the text: 
-
-    SUBSCRIBE Perl-XML
-
-in the body of the message. There are lots of friendly people on the
-list, including myself, and we'll be glad to get you started.
+mailing list at the URL 
+http://listserv.activestate.com/mailman/listinfo/perl-xml
 
 Matt Sergeant, matt@sergeant.org
 

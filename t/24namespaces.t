@@ -1,5 +1,5 @@
 use Test;
-BEGIN { plan tests => 8 }
+BEGIN { plan tests => 9 }
 
 use XML::XPath;
 ok(1);
@@ -22,8 +22,8 @@ ok(@nodes, 2);
 
 # Set namespace mappings.
 
-$xp->set_namespace("foo" => "flubber.com");
-$xp->set_namespace("goo" => "foobar.com");
+$xp->set_namespace("foo" => "flubber.example.com");
+$xp->set_namespace("goo" => "foobar.example.com");
 
 # warn "TEST 6\n";
 @nodes = $xp->findnodes('//foo:foo'); # should find flubber.com foos
@@ -36,9 +36,11 @@ ok(@nodes, 3);
 @nodes = $xp->findnodes('//foo'); # should find default NS foos
 ok(@nodes, 2);
 
+ok($xp->findvalue('//attr:node/@attr:findme'), 'someval');
+
 __DATA__
-<xml xmlns:foo="foobar.com"
-    xmlns="flubber.com">
+<xml xmlns:foo="foobar.example.com"
+    xmlns="flubber.example.com">
     <foo>
         <bar/>
         <foo/>
@@ -49,4 +51,6 @@ __DATA__
         <foo:bar/>
         <foo:foo/>
     </foo:foo>
+    <attr:node xmlns:attr="attribute.example.com"
+        attr:findme="someval"/>
 </xml>

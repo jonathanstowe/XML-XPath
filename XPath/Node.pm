@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.11 2000/09/25 13:33:11 matt Exp $
+# $Id: Node.pm,v 1.12 2000/11/30 16:09:26 matt Exp $
 
 package XML::XPath::Node;
 
@@ -214,8 +214,6 @@ sub new {
     return bless $self, $class;
 }
 
-# sub DESTROY {}
-
 sub AUTOLOAD {
     my $method = $AUTOLOAD;
     $method =~ s/.*:://;
@@ -223,6 +221,7 @@ sub AUTOLOAD {
     no strict 'refs';
     *{$AUTOLOAD} = sub { 
         my $self = shift;
+        my $olderror = $@; # store previous exceptions
         my $obj = eval { $$self };
         if ($@) {
             if ($@ =~ /Not a SCALAR reference/) {
@@ -230,7 +229,16 @@ sub AUTOLOAD {
             }
             croak $@;
         }
-        $obj && $obj->$method(@_);
+        if ($obj) {
+            # make sure $@ propogates if this method call was the result
+            # of losing scope because of a die().
+            if ($method =~ /^(DESTROY|del_parent_link)$/) {
+                $obj->$method(@_);
+                $@ = $olderror if $olderror;
+                return;
+            }
+            return $obj->$method(@_);
+        }
     };
     goto &$AUTOLOAD;
 }

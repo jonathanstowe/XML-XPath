@@ -1,4 +1,4 @@
-# $Id: Builder.pm,v 1.7 2000/09/25 13:33:11 matt Exp $
+# $Id: Builder.pm,v 1.8 2000/11/29 17:23:10 matt Exp $
 
 package XML::XPath::Builder;
 
@@ -23,15 +23,12 @@ sub new {
 }
 
 
-# SHOWSTOPPER!
-#
-# Perl SAX doesn't yet define how to handle namespaces
-
 sub mkelement {
-	my ($self, $tag, $attribs) = @_;
+	my ($self, $element) = @_;
 
-	my $node = XML::XPath::Node::Element->new($tag, '#default');
-	
+	my $node = XML::XPath::Node::Element->new($element->{Data}{Name}, '#default');
+
+        my $attribs = $element->{Data}{Attribs};
 	for my $attr (keys %$attribs) {
 		my $newattr = XML::XPath::Node::Attribute->new($attr, $attribs->{$attr});
 		$node->appendAttribute($newattr, 1);
@@ -44,6 +41,13 @@ sub start_document {
 	my $self = shift;
 	$self->{Current} = XML::XPath::Node::Element->new();
 	$self->{Root} = $self->{Current};
+}
+
+sub end_document {
+	my $self = shift;
+	
+	delete $self->{Current};
+	return $self->{Root};
 }
 
 sub characters {
@@ -63,7 +67,7 @@ sub characters {
 sub start_element {
 	my $self = shift;
 	my $element = shift;
-	my $node = mkelement($self, $element->{Name}, $element->{Attributes});
+	my $node = mkelement($self, $element);
 	$self->{Current}->appendChild($node, 1);
 	$self->{Current} = $node;
 }
@@ -72,14 +76,6 @@ sub end_element {
 	my $self = shift;
 	$self->{Last} = $self->{Current};
 	$self->{Current} = $self->{Current}->getParentNode;
-}
-
-sub end_document {
-	my $self = shift;
-	
-	delete $self->{Last};
-	delete $self->{Current};
-	return $self->{Root};
 }
 
 sub processing_instruction {

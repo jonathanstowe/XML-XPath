@@ -7,10 +7,10 @@ require 5.005;
 WriteMakefile(
     'NAME'	=> 'XML::XPath',
     'VERSION_FROM' => 'XPath.pm', # finds $VERSION
-	'AUTHOR' => 'Matt Sergeant, FastNet Software Ltd',
-	'ABSTRACT_FROM' => 'XPath.pm',
-	'PREREQ_PM' => {
-			'XML::Parser' => '2.23',
-			},
-	'EXE_FILES' => [ 'examples/xpath' ],
+    'AUTHOR' => 'Matt Sergeant, AxKit.com Ltd',
+    'ABSTRACT_FROM' => 'XPath.pm',
+    'PREREQ_PM' => {
+		    'XML::Parser' => '2.23',
+		    },
+    'EXE_FILES' => [ 'examples/xpath' ],
 );

@@ -1,9 +1,17 @@
-# $Id: Step.pm,v 1.28 2000/09/25 13:33:11 matt Exp $
+# $Id: Step.pm,v 1.29 2000/11/30 16:37:34 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
 use XML::XPath::Node;
 use strict;
+
+# the beginnings of using XS for this file...
+# require DynaLoader;
+# use vars qw/$VERSION @ISA/;
+# $VERSION = '1.0';
+# @ISA = qw(DynaLoader);
+# 
+# bootstrap XML::XPath::Step $VERSION;
 
 sub test_qname () { 0; } # Full name
 sub test_ncwild () { 1; } # NCName:*

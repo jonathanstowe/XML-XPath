@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.20 2000/09/05 13:04:50 matt Exp $
+# $Id: Function.pm,v 1.21 2000/11/06 15:44:02 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -163,7 +163,7 @@ sub concat {
     my $self = shift;
     my ($node, @params) = @_;
     die "concat: Too few parameters\n" if @params < 2;
-    my $string = join('', map {$_->value} @params);
+    my $string = join('', map {$_->string_value} @params);
     return XML::XPath::Literal->new($string);
 }
 
@@ -171,7 +171,8 @@ sub starts_with {
     my $self = shift;
     my ($node, @params) = @_;
     die "starts-with: incorrect number of params\n" unless @params == 2;
-    if (substr($params[0]->value, 0, length($params[1]->value)) eq $params[1]->value) {
+    my ($string1, $string2) = ($params[0]->string_value, $params[1]->string_value);
+    if (substr($string1, 0, length($string2)) eq $string2) {
         return XML::XPath::Boolean->True;
     }
     return XML::XPath::Boolean->False;
@@ -181,12 +182,10 @@ sub contains {
     my $self = shift;
     my ($node, @params) = @_;
     die "starts-with: incorrect number of params\n" unless @params == 2;
-    if ($params[0]->isa('XML::XPath::NodeSet')) {
-        die "Cannot do contains() on a NodeSet - convert to string using string() function first";
-    }
-    my $value = $params[1]->value;
-    if ($params[0]->value =~ /(.*?)\Q$value\E(.*)/) {
+    my $value = $params[1]->string_value;
+    if ($params[0]->string_value =~ /(.*?)\Q$value\E(.*)/) {
         # $1 and $2 stored for substring funcs below
+        # TODO: Fix this nasty implementation!
         return XML::XPath::Boolean->True;
     }
     return XML::XPath::Boolean->False;
@@ -221,7 +220,7 @@ sub substring {
     my ($node, @params) = @_;
     die "substring: Wrong number of parameters\n" if (@params < 2 || @params > 3);
     my ($str, $offset, $len);
-    $str = $params[0]->value;
+    $str = $params[0]->string_value;
     $offset = $params[1]->value;
     $offset--; # uses 1 based offsets
     if (@params == 3) {
@@ -235,7 +234,7 @@ sub string_length {
     my ($node, @params) = @_;
     die "string-length: Wrong number of params\n" if @params > 1;
     if ($params[0]) {
-        return XML::XPath::Number->new(length($params[0]->value));
+        return XML::XPath::Number->new(length($params[0]->string_value));
     }
     else {
         return XML::XPath::Number->new(
@@ -265,9 +264,9 @@ sub translate {
     my $self = shift;
     my ($node, @params) = @_;
     die "translate: Wrong number of params\n" if @params != 3;
-    local $_ = $params[0]->value;
-    my $find = $params[1]->value;
-    my $repl = $params[2]->value;
+    local $_ = $params[0]->string_value;
+    my $find = $params[1]->string_value;
+    my $repl = $params[2]->string_value;
     eval "tr/\\Q$find\\E/\\Q$repl\\E/d, 1" or die $@;
     return XML::XPath::Literal->new($_);
 }
@@ -303,7 +302,11 @@ sub false {
 }
 
 sub lang {
-    die "lang: Function not supported\n";
+    my $self = shift;
+    my ($node, @params) = @_;
+    die "lang: function takes 1 parameter\n" if @params != 1;
+    return $node->findvalue('ancestor::xml:lang[starts-with(., "' .
+            $params[0]->string_value . '")]');
 }
 
 ### NUMBER FUNCTIONS ###
@@ -328,7 +331,11 @@ sub sum {
     my $self = shift;
     my ($node, @params) = @_;
     die "sum: Parameter must be a NodeSet\n" unless $params[0]->isa('XML::XPath::NodeSet');
-    die "sum: Function not yet supported\n";
+    my $sum;
+    foreach my $node ($params[0]->get_nodelist) {
+        $sum += $node->to_number->value;
+    }
+    return XML::XPath::Number->new($sum);
 }
 
 sub floor {

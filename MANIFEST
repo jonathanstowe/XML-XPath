@@ -48,6 +48,7 @@ t/21allnodes.t
 t/22name_select.t
 t/23func.t
 t/24namespaces.t
+t/25scope.t
 t/rdf.t
 t/remove.t
 t/insert.t

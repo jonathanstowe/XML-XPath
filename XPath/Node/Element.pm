@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.10 2000/10/02 08:22:36 matt Exp $
+# $Id: Element.pm,v 1.11 2000/11/29 17:21:43 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -17,11 +17,11 @@ sub new {
     my $class = shift;
     my ($tag, $prefix) = @_;
         
-        my $pos = XML::XPath::Node->nextPos;
-    
-        my @vals;
-        @vals[node_global_pos, node_prefix, node_children, node_name, node_attribs] =
-                ($pos, $prefix, [], $tag, []);
+    my $pos = XML::XPath::Node->nextPos;
+
+    my @vals;
+    @vals[node_global_pos, node_prefix, node_children, node_name, node_attribs] =
+            ($pos, $prefix, [], $tag, []);
         
     my $self = \@vals;
     bless $self, $class;

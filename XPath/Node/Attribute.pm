@@ -1,4 +1,4 @@
-# $Id: Attribute.pm,v 1.7 2000/09/25 13:33:15 matt Exp $
+# $Id: Attribute.pm,v 1.8 2000/11/29 17:22:24 matt Exp $
 
 package XML::XPath::Node::Attribute;
 
@@ -33,13 +33,20 @@ sub getNodeType { ATTRIBUTE_NODE }
 sub isAttributeNode { 1; }
 
 sub getName {
-	my $self = shift;
-	$self->[node_key];
+    my $self = shift;
+    $self->[node_key];
+}
+
+sub getLocalName {
+    my $self = shift;
+    my $local = $self->[node_key];
+    $local =~ s/.*://;
+    return $local;
 }
 
 sub getNodeValue {
-	my $self = shift;
-	$self->[node_value];
+    my $self = shift;
+    $self->[node_value];
 }
 
 sub getData {
