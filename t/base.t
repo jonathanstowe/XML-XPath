@@ -3,6 +3,8 @@ use XML::XPath;
 use XML::XPath::Parser;
 use XML::XPath::XMLParser;
 
+# $XML::XPath::Debug = 1;
+
 my $p = XML::XPath->new( filename => 'examples/test.xml' );
 if ($p) { print "ok 1\n"; }
 else { print "not ok 1\n"; }
@@ -22,7 +24,7 @@ my $path = $pp->parse('.//
 			[(../../@att="va\'l") and (@bert = "geee")]
 			[position() = child::para/fred]
 			[0 -.3]/
-		geerner[(fart | blert)[predicate[@vee]]]');
+		geerner[(farp | blert)[predicate[@vee]]]');
 
 if ($path) { print "ok 3\n"; }
 else { print "not ok 3\n"; }

@@ -13,6 +13,11 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.22
+
+Major performance enhancements for paths containing //
+More minor tweaks
+
 =item 0.21
 
 Performance enhancements to expression evalutation
@@ -71,4 +76,4 @@ This is the first public release
 
 =back
 
-$Id: README,v 1.7 2000/04/17 11:31:00 matt Exp $
+$Id: README,v 1.8 2000/04/18 08:20:49 matt Exp $

@@ -1,8 +1,8 @@
-# $Id: XMLParser.pm,v 1.27 2000/04/17 11:14:25 matt Exp $
+# $Id: XMLParser.pm,v 1.29 2000/04/18 08:21:04 matt Exp $
 
 package XML::XPath::XMLParser;
 
-use vars qw/$AUTOLOAD $VERSION @ISA @EXPORT/;
+use vars qw/$VERSION @ISA @EXPORT/;
 use strict;
 
 use XML::Parser;
@@ -109,20 +109,17 @@ sub parsefile {
 
 sub mkattrib {
 	my ($parent, $key, $val, $prefix) = @_;
-	my @newattr = ($parent, undef, $prefix, $key, $val);
-	return bless(\@newattr, 'attribute');
+	return bless([$parent, undef, $prefix, $key, $val], 'attribute');
 }
 
 sub mkelement {
 	my ($parent, $tag) = @_;
-	my @node = ($parent, undef, undef, [], $tag);
-	return bless(\@node, 'element');
+	return bless([$parent, undef, undef, [], $tag], 'element');
 }
 
 sub mknamespace {
 	my ($parent, $prefix, $expanded) = @_;
-	my @node = ($parent, undef, $prefix, $expanded);
-	return bless(\@node, 'namespace');
+	return bless([$parent, undef, $prefix, $expanded], 'namespace');
 }
 
 sub buildelement {
@@ -136,22 +133,22 @@ sub buildelement {
 #	$node[node_parent] = $current;
 #	$node[node_name] = $tag;
 
-	if (!$_namespaces_on && $e->namespace($tag)) {
+	if ($XML::XPath::Namespaces && !$_namespaces_on && XML::Parser::Expat::namespace($e, $tag)) {
 		$_namespaces_on = 1;
 	}
 	
 	goto SKIP_NS unless $_namespaces_on;
 	
-	my @prefixes = $e->current_ns_prefixes();
+	my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
 	push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
-	my @expanded = map {$e->expand_ns_prefix($_)} @prefixes;
+	my @expanded = map {XML::Parser::Expat::expand_ns_prefix($e, $_)} @prefixes;
 	
 	my (%exp_to_pre, %pre_to_exp);
 	
 	@exp_to_pre{@expanded} = @prefixes;
 	@pre_to_exp{@prefixes} = @expanded;
 	
-	my $prefix = $exp_to_pre{$e->namespace($tag) || '#default'};
+	my $prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
 	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
 	$node->[node_prefix] = $prefix;
@@ -167,7 +164,7 @@ SKIP_NS:
 	
 	while (@$attribs) {
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
-		my $namespace = $e->namespace($key) || "#default";
+		my $namespace = XML::Parser::Expat::namespace($e, $key) || "#default";
 		my $newattr = mkattrib($node, $key, $val, $exp_to_pre{$namespace});
 		push @{$node->[node_attribs]}, $newattr;
 		$newattr->[node_pos] = $#{$node->[node_attribs]};
@@ -192,8 +189,7 @@ sub parse_final {
 
 sub mktext {
 	my ($parent, $text) = @_;
-	my @text_node = ($parent, undef, $text);
-	return bless (\@text_node, 'text');
+	return bless ([$parent, undef, $text], 'text');
 }
 
 sub parse_char {
@@ -227,8 +223,7 @@ sub parse_end {
 
 sub mkpi {
 	my ($parent, $target, $data) = @_;
-	my @node = ($parent, undef, $target, $data);
-	return bless(\@node, 'pi');
+	return bless([$parent, undef, $target, $data], 'pi');
 }
 
 sub parse_pi {
@@ -241,8 +236,7 @@ sub parse_pi {
 
 sub mkcomment {
 	my ($parent, $data) = @_;
-	my @node = ($parent, undef, $data);
-	return bless(\@node, 'comment');
+	return bless([$parent, undef, $data], 'comment');
 }
 
 sub parse_comment {
@@ -274,15 +268,25 @@ sub as_string {
 			$string .= as_string($kid);
 		}
 		$string .= "</" . $node->[node_name] . ">";
+
+		if (!$node->[node_parent]->[node_parent]) {
+			$string .= "\n";
+		}
 	}
 	elsif (ref $node eq 'text') {
 		$string .= XML::Parser::Expat->xml_escape($node->[node_text]);
 	}
 	elsif (ref $node eq 'comment') {
 		$string .= '<!--' . $node->[node_comment] . '-->';
+		if (!$node->[node_parent]->[node_parent]) {
+			$string .= "\n";
+		}
 	}
 	elsif (ref $node eq 'pi') {
 		$string .= "<?" . $node->[node_target] . " " . XML::Parser::Expat->xml_escape($node->[node_data]) . "?>";
+		if (!$node->[node_parent]->[node_parent]) {
+			$string .= "\n";
+		}
 	}
 	elsif (ref $node eq 'namespace') {
 		return '' unless defined $node->[node_expanded];

@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.17 2000/04/17 11:14:25 matt Exp $
+# $Id: Parser.pm,v 1.19 2000/04/17 17:08:52 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -503,14 +503,53 @@ sub LocationPath {
 	elsif (match($self, $tokens, '//')) {
 		# root
 		push @$loc_path, XML::XPath::Root->new();
-		push @$loc_path, XML::XPath::Step->new($self, 'descendant-or-self', 'node()');
-		push @$loc_path, RelativeLocationPath($self, $tokens);
+		my $optimised = optimise_descendant_or_self($self, $tokens);
+		if (!$optimised) {
+			push @$loc_path, XML::XPath::Step->new($self, 'descendant-or-self', 'node()');
+			push @$loc_path, RelativeLocationPath($self, $tokens);
+		}
+		else {
+			push @$loc_path, $optimised, RelativeLocationPath($self, $tokens);
+		}
 	}
 	else {
 		push @$loc_path, RelativeLocationPath($self, $tokens);
 	}
 	
 	return $loc_path;
+}
+
+sub optimise_descendant_or_self {
+	my ($self, $tokens) = @_;
+	
+	debug("in SUB\n");
+	
+	my $tokpos = $self->{_tokpos};
+	
+	# // must be followed by a Step.
+	if ($tokens->[$tokpos+1] && $tokens->[$tokpos+1] eq '[') {
+		# next token is a predicate
+		return;
+	}
+	elsif ($tokens->[$tokpos] =~ /^\.\.?$/) {
+		# abbreviatedStep - can't optimise.
+		return;
+	}
+	else {
+		debug("Trying to optimise //\n");
+		my $step = Step($self, $tokens);
+		if ($step->{axis} !~ /^(child|attribute)$/) {
+			# can't optimise axes other than child and attribute
+			$self->{_tokpos} = $tokpos;
+			return;
+		}
+		$step->{axis} = 'descendant';
+		$step->{axis_method} = 'axis_descendant';
+		$self->{_tokpos}--;
+		$tokens->[$self->{_tokpos}] = '.';
+		return $step;
+		
+	}
 }
 
 sub RelativeLocationPath {
@@ -523,9 +562,20 @@ sub RelativeLocationPath {
 	push @steps, Step($self, $tokens);
 	while (match($self, $tokens, '//?')) {
 		if ($self->{_curr_match} eq '//') {
-			push @steps, XML::XPath::Step->new($self, 'descendant-or-self', 'node()');
+			my $optimised = optimise_descendant_or_self($self, $tokens);
+			if (!$optimised) {
+				push @steps, XML::XPath::Step->new($self, 'descendant-or-self', 'node()');
+			}
+			else {
+				push @steps, $optimised;
+			}
 		}
 		push @steps, Step($self, $tokens);
+		if (@steps > 1 && 
+				$steps[-1]->{axis} eq 'self' && 
+				$steps[-1]->{test} eq 'node()') {
+			pop @steps;
+		}
 	}
 	
 	return @steps;

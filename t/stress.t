@@ -1,4 +1,4 @@
-# $Id: stress.t,v 1.2 2000/02/14 10:53:22 matt Exp $
+# $Id: stress.t,v 1.3 2000/04/17 17:08:58 matt Exp $
 
 print "1..7\n";
 my $x; $x++;
@@ -18,7 +18,7 @@ print "not ok $x\n" unless $pp;
 $x++;
 
 # test path parse time		
-for (1..10000) {
+for (1..5000) {
 	$pp->parse('//project/wednesday');
 }
 
@@ -47,7 +47,7 @@ print "ok $x\n" if $path;
 print "not ok $x\n" unless $path;
 $x++;
 
-for (1..100) {
+for (1..1000) {
 	$path->evaluate($root);
 }
 		

@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.16 2000/04/17 11:14:25 matt Exp $
+# $Id: Step.pm,v 1.17 2000/04/17 17:08:52 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::XMLParser;
@@ -8,10 +8,12 @@ use strict;
 sub new {
 	my $class = shift;
 	my ($pp, $axis, $test, $literal) = @_;
-	
+	my $axis_method = "axis_$axis";
+	$axis_method =~ tr/-/_/;
 	my $self = {
 		pp => $pp, # the XML::XPath::Parser class
 		axis => $axis,
+		axis_method => $axis_method,
 		test => $test,
 		literal => $literal,
 		predicates => [],
@@ -90,15 +92,15 @@ sub evaluate_node {
 	
 #	warn "Node: ", $context->[node_name], "\n";
 	
-	my $method = "axis_" . $self->{axis};
-	$method =~ tr/-/_/;
+	my $method = $self->{axis_method};
 	
 	my $results = XML::XPath::NodeSet->new();
+	no strict 'refs';
 	eval {
-		$self->$method($context, $results);
+		$method->($self, $context, $results);
 	};
 	if ($@) {
-		die "axis $method not implemented\n";
+		die "axis $method not implemented [$@]\n";
 	}
 	return $results;
 }
@@ -109,10 +111,10 @@ sub axis_ancestor {
 	
 	$self->{pp}->set_direction('reverse');
 	return $results unless $context->[node_parent];
-	if ($self->node_test($context->[node_parent])) {
+	if (node_test($self, $context->[node_parent])) {
 		$results->push($context->[node_parent]);
 	}
-	$self->axis_ancestor($context->[node_parent], $results);
+	axis_ancestor($self, $context->[node_parent], $results);
 }
 
 sub axis_ancestor_or_self {
@@ -120,10 +122,10 @@ sub axis_ancestor_or_self {
 	my ($context, $results) = @_;
 	
 	$self->{pp}->set_direction('reverse');
-	if ($self->node_test($context)) {
+	if (node_test($self, $context)) {
 		$results->push($context);
 	}
-	$self->axis_ancestor_or_self($context->[node_parent], $results) if $context->[node_parent];
+	axis_ancestor_or_self($self, $context->[node_parent], $results) if $context->[node_parent];
 }
 
 sub axis_attribute {
@@ -144,7 +146,7 @@ sub axis_child {
 	
 	return $results unless ref($context) eq 'element';
 	foreach my $node (@{$context->[node_children]}) {
-		if ($self->node_test($node)) {
+		if (node_test($self, $node)) {
 			$results->push($node);
 		}
 	}
@@ -156,10 +158,10 @@ sub axis_descendant {
 	
 	return $results unless ref($context) eq 'element';
 	foreach my $node (@{$context->[node_children]}) {
-		if ($self->node_test($node)) {
+		if (node_test($self, $node)) {
 			$results->push($node);
 		}
-		$self->axis_descendant($node, $results);
+		axis_descendant($self, $node, $results);
 	}
 }
 
@@ -167,11 +169,11 @@ sub axis_descendant_or_self {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	if ($self->node_test($context)) {
+	if (node_test($self, $context)) {
 		$results->push($context);
 	}
 	foreach my $node (@{$context->[node_children]}) {
-		$self->axis_descendant_or_self($node, $results);
+		axis_descendant_or_self($self, $node, $results);
 	}
 }
 
@@ -182,7 +184,7 @@ sub axis_following {
 	return $results unless $context->[node_parent];
 	my $i = $context->[node_pos];
 	for (my $ref = $i + 1; $ref < @{$context->[node_parent]}; $ref++) {
-		$self->axis_descendant_or_self($context->[node_parent]->[node_children]->[$ref], $results);
+		axis_descendant_or_self($self, $context->[node_parent]->[node_children]->[$ref], $results);
 	}
 }
 
@@ -194,7 +196,7 @@ sub axis_following_sibling {
 	my $i = $context->[node_pos] + 1;
 	while(1) {
 		last unless $context->[node_parent]->[node_children]->[$i];
-		if ($self->node_test($context->[node_parent]->[node_children]->[$i])) {
+		if (node_test($self, $context->[node_parent]->[node_children]->[$i])) {
 			$results->push($context->[node_parent]->[node_children]->[$i]);
 		}
 		$i++;
@@ -218,7 +220,7 @@ sub axis_parent {
 	my ($context, $results) = @_;
 	
 	return $results unless $context->[node_parent];
-	if ($self->node_test($context->[node_parent])) {
+	if (node_test($self, $context->[node_parent])) {
 		$results->push($context->[node_parent]);
 	}
 }
@@ -233,7 +235,7 @@ sub axis_preceding {
 	my $i = $context->[node_pos];
 	my $ref = 0;
 	while($context->[node_parent][node_children][$ref] ne $context) {
-		$self->axis_descendant_or_self($context->[node_parent][node_children][$ref], $results);
+		axis_descendant_or_self($self, $context->[node_parent][node_children][$ref], $results);
 		$ref++;
 	}
 }
@@ -258,7 +260,7 @@ sub axis_self {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	if ($self->node_test($context)) {
+	if (node_test($self, $context)) {
 		$results->push($context);
 	}
 }
@@ -268,12 +270,13 @@ sub node_test {
 	my $node = shift;
 	
 	{
-		local $^W;
+#		local $^W;
 #		warn "node_test: $self->{test} = " . $node->[node_name] . "\n";
+		1;
 	}
 	
 	# if node passes test, return true
-
+	
 	return 1 if $self->{test} eq '*'; # True for all nodes of principal type (element)
 	return 1 if $self->{test} eq 'node()';
 

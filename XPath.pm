@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.26 2000/04/17 11:28:43 matt Exp $
+# $Id: XPath.pm,v 1.27 2000/04/17 17:07:41 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.21';
+$VERSION = '0.22';
 
 use XML::XPath::XMLParser;
 use XML::XPath::Parser;
@@ -69,30 +69,54 @@ sub cleanup {
 	XML::XPath::XMLParser::dispose($context);
 }
 
-sub AUTOLOAD {
+sub get_filename {
 	my $self = shift;
-	no strict 'refs';
-	if ($AUTOLOAD =~ /.*::get(_\w+)/) {
-		my $attrib = $1;
-		if (exists $self->{$attrib}) {
-			*{$AUTOLOAD} = sub { return $_[0]->{$attrib}; };
-			return $self->{$attrib};
-		}
-		else {
-			die "No such method $AUTOLOAD";
-		}
-	}
-	if ($AUTOLOAD =~ /.*::set(_\w+)/) {
-		my $attrib = $1;
-		if (exists $self->{$attrib}) {
-			*{$AUTOLOAD} = sub { return $_[0]->{$attrib} = $_[1]; };
-			return $self->{$attrib} = $_[0];
-		}
-		else {
-			die "No such method $AUTOLOAD";
-		}
-	}
-	die "No such method $AUTOLOAD";
+	$self->{_filename};
+}
+
+sub set_filename {
+	my $self = shift;
+	$self->{_filename} = shift;
+}
+
+sub get_parser {
+	my $self = shift;
+	$self->{_parser};
+}
+
+sub set_parser {
+	my $self = shift;
+	$self->{_parser} = shift;
+}
+
+sub get_xml {
+	my $self = shift;
+	$self->{_xml};
+}
+
+sub set_xml {
+	my $self = shift;
+	$self->{_xml} = shift;
+}
+
+sub get_ioref {
+	my $self = shift;
+	$self->{_ioref};
+}
+
+sub set_ioref {
+	my $self = shift;
+	$self->{_ioref} = shift;
+}
+
+sub get_context {
+	my $self = shift;
+	$self->{_context};
+}
+
+sub set_context {
+	my $self = shift;
+	$self->{_context} = shift;
 }
 
 1;
