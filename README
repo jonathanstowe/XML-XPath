@@ -13,6 +13,10 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.55
+
+Added scalar context ability to findnodes() (for AxKit)
+
 =item 0.54
 
 Added id() speedup code

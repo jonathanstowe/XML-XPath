@@ -5,7 +5,7 @@ package XML::XPath;
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.54';
+$VERSION = '0.55';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -72,11 +72,12 @@ sub findnodes {
 	my $results = $self->find($path, $context);
 	
 	if ($results->isa('XML::XPath::NodeSet')) {
-		return $results->get_nodelist;
+		return wantarray ? $results->get_nodelist : $results;
+#		return $results->get_nodelist;
 	}
 	
 	warn("findnodes returned a ", ref($results), " object\n") if $XML::XPath::Debug;
-	return XML::XPath::NodeSet->new();
+	return wantarray ? () : XML::XPath::NodeSet->new();
 }
 
 sub matches {
@@ -258,7 +259,8 @@ to do this.
 
 =head2 findnodes($path, [$context])
 
-Returns a list of nodes found by $path, optionally in context $context.
+Returns a list of nodes found by $path, optionally in context $context. 
+In scalar context returns an XML::XPath::NodeSet object.
 
 =head2 findnodes_as_string($path, [$context])
 
