@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.22 2001/03/16 11:10:08 matt Exp $
+# $Id: Function.pm,v 1.23 2001/04/23 22:00:12 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -322,8 +322,15 @@ sub lang {
     my $self = shift;
     my ($node, @params) = @_;
     die "lang: function takes 1 parameter\n" if @params != 1;
-    return $node->findvalue('ancestor::xml:lang[starts-with(., "' .
-            $params[0]->string_value . '")]');
+    my $lang = $node->findvalue('(ancestor-or-self::*[@xml:lang]/@xml:lang)[last()]');
+    my $lclang = lc($params[0]->string_value);
+    # warn("Looking for lang($lclang) in $lang\n");
+    if (substr(lc($lang), 0, length($lclang)) eq $lclang) {
+        return XML::XPath::Boolean->True;
+    }
+    else {
+        return XML::XPath::Boolean->False;
+    }
 }
 
 ### NUMBER FUNCTIONS ###

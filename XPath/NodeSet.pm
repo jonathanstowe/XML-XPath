@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.14 2001/04/01 16:57:07 matt Exp $
+# $Id: NodeSet.pm,v 1.15 2001/04/23 21:59:52 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -14,81 +14,81 @@ sub new {
 }
 
 sub sort {
-    my $self = shift;
+    my $self = CORE::shift;
     @$self = CORE::sort { $a->get_global_pos <=> $b->get_global_pos } @$self;
     return $self;
 }
 
 sub pop {
-	my $self = shift;
+	my $self = CORE::shift;
 	CORE::pop @$self;
 }
 
 sub push {
-	my $self = shift;
+	my $self = CORE::shift;
 	my (@nodes) = @_;
 	CORE::push @$self, @nodes;
 }
 
 sub append {
-	my $self = shift;
+	my $self = CORE::shift;
 	my ($nodeset) = @_;
 	CORE::push @$self, $nodeset->get_nodelist;
 }
 
 sub shift {
-	my $self = shift;
+	my $self = CORE::shift;
 	CORE::shift @$self;
 }
 
 sub unshift {
-	my $self = shift;
+	my $self = CORE::shift;
 	my (@nodes) = @_;
 	CORE::unshift @$self, @nodes;
 }
 
 sub prepend {
-	my $self = shift;
+	my $self = CORE::shift;
 	my ($nodeset) = @_;
 	CORE::unshift @$self, $nodeset->get_nodelist;
 }
 
 sub size {
-	my $self = shift;
+	my $self = CORE::shift;
 	scalar @$self;
 }
 
 sub get_node { # uses array index starting at 1, not 0
-	my $self = shift;
+	my $self = CORE::shift;
 	my ($pos) = @_;
 	$self->[$pos - 1];
 }
 
 sub get_nodelist {
-	my $self = shift;
+	my $self = CORE::shift;
 	@$self;
 }
 
 sub to_boolean {
-	my $self = shift;
+	my $self = CORE::shift;
 	return (@$self > 0) ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
 }
 
 sub string_value {
-	my $self = shift;
+	my $self = CORE::shift;
 	return '' unless @$self;
 	return $self->[0]->string_value;
 }
 
 sub to_literal {
-	my $self = shift;
+	my $self = CORE::shift;
 	return XML::XPath::Literal->new(
 			join('', map { $_->string_value } @$self)
 			);
 }
 
 sub to_number {
-	my $self = shift;
+	my $self = CORE::shift;
 	return XML::XPath::Number->new(
 			$self->to_literal
 			);
