@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.11 2000/03/07 19:34:04 matt Exp $
+# $Id: Function.pm,v 1.12 2000/03/07 20:44:18 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::XMLParser;
@@ -137,7 +137,19 @@ sub _find_id {
 sub local_name {
 	my $self = shift;
 	my ($node, @params) = @_;
-	die "local-name: Function not supported\n";
+	if (@params > 1) {
+		die "name() function takes one or no parameters\n";
+	}
+	elsif (@params) {
+		my $nodeset = shift(@params);
+		$node ||= $nodeset->unshift;
+	}
+	
+	my $exp = XML::XPath::XMLParser::expanded_name($node);
+	if ($exp =~ /:(.*)/) {
+		$exp = $1;
+	}
+	return XML::XPath::Literal->new($exp);
 }
 
 sub namespace_uri {
@@ -149,7 +161,16 @@ sub namespace_uri {
 sub name {
 	my $self = shift;
 	my ($node, @params) = @_;
-	die "name: Function not supported\n";
+	if (@params > 1) {
+		die "name() function takes one or no parameters\n";
+	}
+	elsif (@params) {
+		my $nodeset = shift(@params);
+		$node ||= $nodeset->unshift;
+	}
+	
+	return XML::XPath::Literal->new(
+			XML::XPath::XMLParser::expanded_name($node));
 }
 
 ### STRING FUNCTIONS ###
@@ -342,15 +363,30 @@ sub sum {
 }
 
 sub floor {
-	die "floor: Function not supported\n";
+	my $self = shift;
+	my ($node, @params) = @_;
+	require POSIX;
+	my $num = $self->number($node, @params);
+	return XML::XPath::Number->new(
+			POSIX::floor($num->value));
 }
 
 sub ceiling {
-	die "ceiling: Function not supported\n";
+	my $self = shift;
+	my ($node, @params) = @_;
+	require POSIX;
+	my $num = $self->number($node, @params);
+	return XML::XPath::Number->new(
+			POSIX::ceil($num->value));
 }
 
 sub round {
-	die "round: Function not supported\n";
+	my $self = shift;
+	my ($node, @params) = @_;
+	my $num = $self->number($node, @params);
+	require POSIX;
+	return XML::XPath::Number->new(
+			POSIX::floor($num->value + 0.5)); # Yes, I know the spec says don't do this...
 }
 
 1;

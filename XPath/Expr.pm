@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.11 2000/02/28 10:40:21 matt Exp $
+# $Id: Expr.pm,v 1.12 2000/03/07 20:44:18 matt Exp $
 
 package XML::XPath::Expr;
 use XML::XPath::Function;
@@ -111,10 +111,13 @@ sub op_eval {
 					return op_div($node, $self->{lhs}, $self->{rhs});
 				};
 		/^mod$/	&& do {
-					return op_($node, $self->{lhs}, $self->{rhs});
+					return op_mod($node, $self->{lhs}, $self->{rhs});
 				};
 		/^\*$/	&& do {
 					return op_mult($node, $self->{lhs}, $self->{rhs});
+				};
+		/^\|$/	&& do {
+					return op_union($node, $self->{lhs}, $self->{rhs});
 				};
 		
 		die "No such operator, or operator unimplemented in ", $self->as_string, "\n";
@@ -527,6 +530,28 @@ sub op_mult {
 		$functioner->_execute('number', $node, $rh_results)->value
 			;
 	return XML::XPath::Number->new($result);
+}
+
+sub op_union {
+	my ($node, $lhs, $rhs) = @_;
+	my $lh_result = $lhs->evaluate($node);
+	my $rh_result = $rhs->evaluate($node);
+	
+	if ($lh_result->isa('XML::XPath::NodeSet') &&
+			$rh_result->isa('XML::XPath::NodeSet')) {
+		my %found;
+		my $results = XML::XPath::NodeSet->new;
+		foreach my $lhnode ($lh_result->get_nodelist) {
+			$found{"$lhnode"}++;
+			$results->push($lhnode);
+		}
+		foreach my $rhnode ($rh_result->get_nodelist) {
+			$results->push($rhnode)
+					unless exists $found{"$rhnode"};
+		}
+		return $results;
+	}
+	die "Both sides of a union must be Node Sets\n";
 }
 
 1;

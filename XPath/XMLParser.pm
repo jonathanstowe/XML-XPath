@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.24 2000/02/25 13:19:55 matt Exp $
+# $Id: XMLParser.pm,v 1.25 2000/03/07 20:44:18 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -285,25 +285,50 @@ sub as_string {
 	return $string;
 }
 
+sub expanded_name {
+	my $node = shift;
+	# I got this from 4XPath (python, ugh!), but I think it's wrong :)
+	if (ref($node) eq 'element') {
+		return $node->[node_name];
+	}
+	elsif (ref($node) eq 'text') {
+		# This is a guess - the spec leave it undefined.
+		return '';
+	}
+	elsif (ref($node) eq 'comment') {
+		return '';
+	}
+	elsif (ref($node) eq 'attribute') {
+		return $node->[node_key];
+	}
+	elsif (ref($node) eq 'namespace') {
+		return '';
+	}
+	elsif (ref($node) eq 'pi') {
+		# This is a guess - the spec leaves it undefined.
+		return $node->[node_target];
+	}
+}
+
 sub string_value {
 	my $node = shift;
-	if (ref $node eq 'element') {
+	if (ref($node) eq 'element') {
 		return _element_string_value($node);
 	}
-	elsif (ref $node eq 'text') {
+	elsif (ref($node) eq 'text') {
 		# This is a guess - the spec leave it undefined.
 		return $node->[node_text];
 	}
-	elsif (ref $node eq 'comment') {
+	elsif (ref($node) eq 'comment') {
 		return $node->[node_comment];
 	}
-	elsif (ref $node eq 'attribute') {
+	elsif (ref($node) eq 'attribute') {
 		return $node->[node_value];
 	}
-	elsif (ref $node eq 'namespace') {
+	elsif (ref($node) eq 'namespace') {
 		return $node->[node_expanded];
 	}
-	elsif (ref $node eq 'pi') {
+	elsif (ref($node) eq 'pi') {
 		# This is a guess - the spec leaves it undefined.
 		return $node->[node_data];
 	}
