@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.3 2000/05/11 09:47:46 matt Exp $
+# $Id: Node.pm,v 1.4 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::Node;
 

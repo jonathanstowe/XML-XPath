@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.13 2000/05/08 13:08:01 matt Exp $
+# $Id: Function.pm,v 1.14 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -141,7 +141,7 @@ sub local_name {
 	}
 	elsif (@params) {
 		my $nodeset = shift(@params);
-		$node ||= $nodeset->unshift;
+		$node = $nodeset->get_node(1);
 	}
 	
 	return XML::XPath::Literal->new($node->getLocalName);
@@ -161,7 +161,7 @@ sub name {
 	}
 	elsif (@params) {
 		my $nodeset = shift(@params);
-		$node ||= $nodeset->unshift;
+		$node = $nodeset->get_node(1);
 	}
 	
 	return XML::XPath::Literal->new($node->getName);
@@ -174,9 +174,11 @@ sub string {
 	my ($node, @params) = @_;
 	die "string: Too many parameters\n" if @params > 1;
 	if ($params[0]) {
-		return $params[0]->string_value;
+		return XML::XPath::Literal->new($params[0]->string_value);
 	}
 	
+	# TODO - this MUST be wrong!
+	return XML::XPath::Literal->new($node->string_value);
 	# default to nodeset with just $node in.
 }
 

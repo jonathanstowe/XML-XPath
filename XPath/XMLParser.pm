@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.32 2000/05/08 13:08:01 matt Exp $
+# $Id: XMLParser.pm,v 1.33 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -85,11 +85,14 @@ sub buildelement {
 	
 	my (%exp_to_pre, %pre_to_exp);
 	
-	@exp_to_pre{@expanded} = @prefixes;
-	@pre_to_exp{@prefixes} = @expanded;
-	
-	$prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
-	undef $prefix if $prefix eq '#default';
+	{
+		local $^W;
+		@exp_to_pre{@expanded} = @prefixes;
+		@pre_to_exp{@prefixes} = @expanded;
+
+		$prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
+		undef $prefix if $prefix eq '#default';
+	}
 	
 	my @namespaces;
 	while (@prefixes) {

@@ -1,4 +1,4 @@
-# $Id: PI.pm,v 1.2 2000/05/08 16:48:46 matt Exp $
+# $Id: PI.pm,v 1.3 2000/05/16 16:54:04 matt Exp $
 
 package XML::XPath::Node::PI;
 

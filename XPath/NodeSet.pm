@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.11 2000/05/08 13:08:01 matt Exp $
+# $Id: NodeSet.pm,v 1.12 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -71,7 +71,7 @@ sub to_boolean {
 sub string_value {
 	my $self = shift;
 	return '' unless @$self;
-	return XML::XPath::Literal->new($self->[0]->string_value);
+	return $self->[0]->string_value;
 }
 
 sub to_literal {

@@ -1,4 +1,4 @@
-# $Id: Number.pm,v 1.9 2000/05/08 13:08:01 matt Exp $
+# $Id: Number.pm,v 1.11 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::Number;
 use XML::XPath::Boolean;
@@ -6,7 +6,8 @@ use XML::XPath::Literal;
 use strict;
 
 use overload
-		'""' => \&value;
+		'""' => \&value,
+		'0+' => \&value;
 
 sub new {
 	my $class = shift;
@@ -43,7 +44,7 @@ sub to_boolean {
 sub to_literal { XML::XPath::Literal->new($_[0]->as_string); }
 sub to_number { $_[0]; }
 
-sub string_value { goto &to_literal; }
+sub string_value { return $_[0]->value }
 
 1;
 __END__

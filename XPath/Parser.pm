@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.21 2000/04/23 15:36:19 matt Exp $
+# $Id: Parser.pm,v 1.23 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -109,7 +109,7 @@ sub parse {
 	
 	$self->{cache}{$path} = $tree;
 	
-	debug("PARSED Expr to:\n", $tree->as_string, "\n");
+	debug("PARSED Expr to:\n", $tree->as_string, "\n") if $XML::XPath::Debug;
 	
 	return $tree;
 }
@@ -134,7 +134,7 @@ sub tokenize {
 			\.| # match current
 			($AXIS_NAME)?$NODE_TYPE| # match tests
 			processing-instruction|
-			\@$QName| # match attrib
+			\@($QName|\*)| # match attrib
 			\$$QName| # match variable reference
 			($AXIS_NAME)?(\*|$NCName\:\*|$QName)| # match NCName,NodeType,Axis::Test
 			\!=|<=|\-|>=|\/\/|and|or|mod|div| # multi-char seps
@@ -616,7 +616,7 @@ sub Step {
 					XML::XPath::Literal->new($1));
 			match($self, $tokens, '\\)', 1);
 		}
-		elsif ($token =~ /^\@($QName)$/o) {
+		elsif ($token =~ /^\@($QName|\*)$/o) {
 			$self->{_tokpos}++;
 			$step = XML::XPath::Step->new($self, 'attribute', $1);
 		}
@@ -659,7 +659,7 @@ sub is_step {
 	if ($token eq 'processing-instruction') {
 		return 1;
 	}
-	elsif ($token =~ /^\@($QName)$/o) {
+	elsif ($token =~ /^\@($QName|\*)$/o) {
 		return 1;
 	}
 	elsif ($token =~ /^$QName$/o && $tokens->[$self->{_tokpos}+1] ne '(') {

@@ -1,4 +1,4 @@
-# $Id: Literal.pm,v 1.8 2000/05/08 13:08:01 matt Exp $
+# $Id: Literal.pm,v 1.9 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::Literal;
 use XML::XPath::Boolean;
@@ -47,10 +47,10 @@ sub to_boolean {
 	return (length($$self) > 0) ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
 }
 
-sub to_number { XML::XPath::Number->new($_[0]->value); }
-sub to_literal { $_[0]; }
+sub to_number { return XML::XPath::Number->new($_[0]->value); }
+sub to_literal { return $_[0]; }
 
-sub string_value { goto &to_literal; }
+sub string_value { return $_[0]->value; }
 
 1;
 __END__

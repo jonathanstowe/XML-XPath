@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.18 2000/05/08 13:08:01 matt Exp $
+# $Id: Step.pm,v 1.19 2000/05/16 16:53:37 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -31,9 +31,6 @@ sub as_string {
 			$string .= $self->{literal}->as_string;
 		}
 		$string .= ")";
-	}
-	elsif ($self->{test} eq 'id') {
-		$string .= "id(" . $self->{literal}->as_string . ")";
 	}
 	else {
 		$string .= $self->{test};
@@ -261,7 +258,7 @@ sub axis_preceding_sibling {
 	my $ref = 0;
 	my $kids = $parent->getChildNodes;
 	while($kids->[$ref] ne $context) {
-		if ($self->test_node($kids->[$ref])) {
+		if (node_test($self, $kids->[$ref])) {
 			$results->push($kids->[$ref]);
 		}
 		$ref++;

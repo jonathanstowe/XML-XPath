@@ -1,4 +1,4 @@
-# $Id: Builder.pm,v 1.3 2000/05/08 13:08:01 matt Exp $
+# $Id: Builder.pm,v 1.4 2000/05/28 09:50:53 matt Exp $
 
 package XML::XPath::Builder;
 
@@ -30,9 +30,8 @@ sub mkelement {
 
 	my $node = XML::XPath::Node::Element->new($tag, '#default');
 	
-	while (@$attribs) {
-		my ($key, $val) = (shift @$attribs, shift @$attribs);
-		my $newattr = XML::XPath::Node::Attribute->new($key, $val);
+	for my $attr (keys %$attribs) {
+		my $newattr = XML::XPath::Node::Attribute->new($attr, $attribs->{$attr});
 		$node->appendAttribute($newattr);
 	}
 	
@@ -51,10 +50,10 @@ sub characters {
 	
 	my @kids = $self->{Current}->getChildNodes;
 	if (@kids && $kids[-1]->getNodeType == TEXT_NODE) {
-		$kids[-1]->appendText($characters);
+		$kids[-1]->appendText($characters->{Data});
 	}
 	else {
-		my $node = XML::XPath::Node::Text->new($characters);
+		my $node = XML::XPath::Node::Text->new($characters->{Data});
 		$self->{Current}->appendChild($node);
 	}
 }
@@ -91,7 +90,7 @@ sub processing_instruction {
 sub comment {
 	my $self = shift;
 	my $comment = shift;
-	my $node = XML::XPath::Node::Comment->new($comment);
+	my $node = XML::XPath::Node::Comment->new($comment->{Data});
 	$self->{Current}->appendChild($node);
 }
 
