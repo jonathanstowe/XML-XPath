@@ -17,7 +17,13 @@ sub new {
 	my $class = shift;
 	my ($key, $val, $prefix) = @_;
 	
-	my $self = [undef, undef, $prefix, $key, $val];
+        my $pos = XML::XPath::Node->nextPos;
+        
+        my @vals;
+        @vals[node_global_pos, node_prefix, node_key, node_value] =
+                ($pos, $prefix, $key, $val);
+	my $self = \@vals;
+        
 	bless $self, $class;
 	
 }
@@ -31,14 +37,16 @@ sub getName {
 	$self->[node_key];
 }
 
-sub getValue {
+sub getNodeValue {
 	my $self = shift;
 	$self->[node_value];
 }
 
-sub getData {
-	my $self = shift;
-	$self->[node_value];
+*getData = \&getNodeValue;
+
+sub setNodeValue {
+    my $self = shift;
+    $self->[node_value] = shift;
 }
 
 sub getPrefix {

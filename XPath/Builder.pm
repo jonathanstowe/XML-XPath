@@ -17,6 +17,8 @@ sub new {
 	my $class = shift;
 	my $self = ($#_ == 0) ? { %{ (shift) } } : { @_ };
 
+        XML::XPath::Node->resetPos;
+        
 	bless $self, $class;
 }
 

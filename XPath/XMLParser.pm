@@ -139,6 +139,8 @@ SKIP_NS:
 sub parse_init {
 	my $e = shift;
 	
+        XML::XPath::Node->resetPos();
+        
 	$_current = XML::XPath::Node::Element->new();
 	$e->{DOC_Node} = $_current;
 	$_namespaces_on = 0;

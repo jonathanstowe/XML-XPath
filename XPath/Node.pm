@@ -34,91 +34,110 @@ sub NAMESPACE_NODE () {17;}
 # All
 sub node_parent () { 0; }
 sub node_pos () { 1; }
+sub node_global_pos () { 2; }
 
 # Element
-sub node_prefix () { 2; }
-sub node_children () { 3; }
-sub node_name () { 4; }
-sub node_attribs () { 5; }
-sub node_namespaces () { 6; }
+sub node_prefix () { 3; }
+sub node_children () { 4; }
+sub node_name () { 5; }
+sub node_attribs () { 6; }
+sub node_namespaces () { 7; }
+sub node_ids () { 8; }
 
 # Char
-sub node_text () { 2; }
+sub node_text () { 3; }
 
 # PI
-sub node_target () { 2; }
-sub node_data () { 3; }
+sub node_target () { 3; }
+sub node_data () { 4; }
 
 # Comment
-sub node_comment () { 2; }
+sub node_comment () { 3; }
 
 # Attribute
-# sub node_prefix () { 2; }
-sub node_key () { 3; }
-sub node_value () { 4; }
+# sub node_prefix () { 3; }
+sub node_key () { 4; }
+sub node_value () { 5; }
 
 # Namespaces
-# sub node_prefix () { 2; }
-sub node_expanded () { 3; }
+# sub node_prefix () { 3; }
+sub node_expanded () { 4; }
 
 @EXPORT = qw(
-	UNKNOWN_NODE
-	ELEMENT_NODE
-	ATTRIBUTE_NODE
-	TEXT_NODE
-	CDATA_SECTION_NODE
-	ENTITY_REFERENCE_NODE
-	ENTITY_NODE
-	PROCESSING_INSTRUCTION_NODE
-	COMMENT_NODE
-	DOCUMENT_NODE
-	DOCUMENT_TYPE_NODE
-	DOCUMENT_FRAGMENT_NODE
-	NOTATION_NODE
-	ELEMENT_DECL_NODE
-	ATT_DEF_NODE
-	XML_DECL_NODE
-	ATTLIST_DECL_NODE
-	NAMESPACE_NODE
-	);
+    UNKNOWN_NODE
+    ELEMENT_NODE
+    ATTRIBUTE_NODE
+    TEXT_NODE
+    CDATA_SECTION_NODE
+    ENTITY_REFERENCE_NODE
+    ENTITY_NODE
+    PROCESSING_INSTRUCTION_NODE
+    COMMENT_NODE
+    DOCUMENT_NODE
+    DOCUMENT_TYPE_NODE
+    DOCUMENT_FRAGMENT_NODE
+    NOTATION_NODE
+    ELEMENT_DECL_NODE
+    ATT_DEF_NODE
+    XML_DECL_NODE
+    ATTLIST_DECL_NODE
+    NAMESPACE_NODE
+    );
 
 @EXPORT_OK = qw(
-			node_parent
-			node_pos
-			node_prefix
-			node_children
-			node_name
-			node_attribs
-			node_namespaces
-			node_text
-			node_target
-			node_data
-			node_comment
-			node_key
-			node_value
-			node_expanded
-		);
+            node_parent
+            node_pos
+            node_global_pos
+            node_prefix
+            node_children
+            node_name
+            node_attribs
+            node_namespaces
+            node_text
+            node_target
+            node_data
+            node_comment
+            node_key
+            node_value
+            node_expanded
+                        node_ids
+        );
 
 %EXPORT_TAGS = (
-	'node_keys' => [
-		qw(
-			node_parent
-			node_pos
-			node_prefix
-			node_children
-			node_name
-			node_attribs
-			node_namespaces
-			node_text
-			node_target
-			node_data
-			node_comment
-			node_key
-			node_value
-			node_expanded
-		), @EXPORT,
-	],
+    'node_keys' => [
+        qw(
+            node_parent
+            node_pos
+            node_global_pos
+            node_prefix
+            node_children
+            node_name
+            node_attribs
+            node_namespaces
+            node_text
+            node_target
+            node_data
+            node_comment
+            node_key
+            node_value
+            node_expanded
+                        node_ids
+        ), @EXPORT,
+    ],
 );
+
+
+my $global_pos = 0;
+
+sub nextPos {
+    my $class = shift;
+    
+    return ++$global_pos;
+}
+
+sub resetPos {
+    $global_pos = 0;
+}
 
 my %DecodeDefaultEntity =
 (
@@ -132,17 +151,17 @@ my %DecodeDefaultEntity =
 sub XMLescape {
     my ($str, $default) = @_;
     return undef unless defined $str;
-	$default ||= '';
+    $default ||= '';
     
-	if ($XML::XPath::EncodeUtf8AsEntity) {
-    	$str =~ s/([\xC0-\xDF].|[\xE0-\xEF]..|[\xF0-\xFF]...)|([$default])|(]]>)/
-		defined($1) ? XmlUtf8Decode ($1) : 
-		defined ($2) ? $DecodeDefaultEntity{$2} : "]]&gt;" /egsx;
-	}
-	else {
-    	$str =~ s/([$default])|(]]>)/
-		defined ($1) ? $DecodeDefaultEntity{$1} : "]]&gt;" /egsx;
-	}
+    if ($XML::XPath::EncodeUtf8AsEntity) {
+        $str =~ s/([\xC0-\xDF].|[\xE0-\xEF]..|[\xF0-\xFF]...)|([$default])|(]]>)/
+        defined($1) ? XmlUtf8Decode ($1) : 
+        defined ($2) ? $DecodeDefaultEntity{$2} : "]]&gt;" /egsx;
+    }
+    else {
+        $str =~ s/([$default])|(]]>)/
+        defined ($1) ? $DecodeDefaultEntity{$1} : "]]&gt;" /egsx;
+    }
 
 #?? could there be references that should not be expanded?
 # e.g. should not replace &#nn; &#xAF; and &abc;
@@ -162,57 +181,57 @@ sub XmlUtf8Decode
     my $n;
 
     if ($len == 2) {
-		my @n = unpack "C2", $str;
-		$n = (($n[0] & 0x3f) << 6) + ($n[1] & 0x3f);
+        my @n = unpack "C2", $str;
+        $n = (($n[0] & 0x3f) << 6) + ($n[1] & 0x3f);
     }
     elsif ($len == 3) {
-		my @n = unpack "C3", $str;
-		$n = (($n[0] & 0x1f) << 12) + (($n[1] & 0x3f) << 6) + 
-			($n[2] & 0x3f);
+        my @n = unpack "C3", $str;
+        $n = (($n[0] & 0x1f) << 12) + (($n[1] & 0x3f) << 6) + 
+            ($n[2] & 0x3f);
     }
     elsif ($len == 4) {
-		my @n = unpack "C4", $str;
-		$n = (($n[0] & 0x0f) << 18) + (($n[1] & 0x3f) << 12) + 
-			(($n[2] & 0x3f) << 6) + ($n[3] & 0x3f);
+        my @n = unpack "C4", $str;
+        $n = (($n[0] & 0x0f) << 18) + (($n[1] & 0x3f) << 12) + 
+            (($n[2] & 0x3f) << 6) + ($n[3] & 0x3f);
     }
-    elsif ($len == 1) {	# just to be complete...
-		$n = ord ($str);
+    elsif ($len == 1) {    # just to be complete...
+        $n = ord ($str);
     }
     else {
-		die "bad value [$str] for XmlUtf8Decode";
+        die "bad value [$str] for XmlUtf8Decode";
     }
     $hex ? sprintf ("&#x%x;", $n) : "&#$n;";
 }
 
 sub new {
-	my $class = shift;
-	no strict 'refs';
-	my $impl = $class . "Impl";
-	my $this = $impl->new(@_);
-	if ($XML::XPath::SafeMode) {
-		return $this;
-	}
-	my $self = \$this;
-	return bless $self, $class;
+    my $class = shift;
+    no strict 'refs';
+    my $impl = $class . "Impl";
+    my $this = $impl->new(@_);
+    if ($XML::XPath::SafeMode) {
+        return $this;
+    }
+    my $self = \$this;
+    return bless $self, $class;
 }
 
 sub AUTOLOAD {
-	my $method = $AUTOLOAD;
-	$method =~ s/.*:://;
-#	warn "AUTOLOAD $method!\n";
-	no strict 'refs';
-	*{$AUTOLOAD} = sub { 
-		my $self = shift;
-		my $obj = eval { $$self };
-		if ($@) {
-			if ($@ =~ /Not a SCALAR reference/) {
-				croak("No such method $method in " . ref($self));
-			}
-			croak $@;
-		}
-		$obj->$method(@_);
-	};
-	goto &$AUTOLOAD;
+    my $method = $AUTOLOAD;
+    $method =~ s/.*:://;
+#    warn "AUTOLOAD $method!\n";
+    no strict 'refs';
+    *{$AUTOLOAD} = sub { 
+        my $self = shift;
+        my $obj = eval { $$self };
+        if ($@) {
+            if ($@ =~ /Not a SCALAR reference/) {
+                croak("No such method $method in " . ref($self));
+            }
+            croak $@;
+        }
+        $obj->$method(@_);
+    };
+    goto &$AUTOLOAD;
 }
 
 package XML::XPath::NodeImpl;
@@ -220,9 +239,13 @@ package XML::XPath::NodeImpl;
 use vars qw/@ISA $AUTOLOAD/;
 @ISA = ('XML::XPath::Node');
 
+sub new {
+    die "Virtual base method";
+}
+
 sub getNodeType {
-	my $self = shift;
-	return XML::XPath::Node::UNKNOWN_NODE;
+    my $self = shift;
+    return XML::XPath::Node::UNKNOWN_NODE;
 }
 
 sub isElementNode {}
@@ -234,114 +257,151 @@ sub isPINode {}
 sub isCommentNode {}
 
 sub getNodeValue {
-	my $self = shift;
-	return;
+    return;
+}
+
+sub getValue {
+    shift->getNodeValue(@_);
+}
+
+sub setNodeValue {
+    return;
+}
+
+sub setValue {
+    shift->setNodeValue(@_);
 }
 
 sub getParentNode {
-	my $self = shift;
-	return $self->[XML::XPath::Node::node_parent];
+    my $self = shift;
+    return $self->[XML::XPath::Node::node_parent];
 }
 
 sub getRootNode {
-	my $self = shift;
-	while (my $parent = $self->getParentNode) {
-		$self = $parent;
-	}
-	return $self;
+    my $self = shift;
+    while (my $parent = $self->getParentNode) {
+        $self = $parent;
+    }
+    return $self;
 }
 
 sub getElementById {
-	my $self = shift;
-	my ($id) = @_;
-#	warn "getElementById: $id\n";
-	my $root = $self->getRootNode;
-	my $node = $root->[7]{$id};
-#	warn "returning node: ", $node->getName, "\n";
-	return $node;
+    my $self = shift;
+    my ($id) = @_;
+#    warn "getElementById: $id\n";
+    my $root = $self->getRootNode;
+    my $node = $root->[XML::XPath::Node::node_ids]{$id};
+#    warn "returning node: ", $node->getName, "\n";
+    return $node;
 }
 
 sub getName { }
-sub getValue { }
 sub getData { }
 
 sub getChildNodes {
-	return wantarray ? () : [];
+    return wantarray ? () : [];
 }
 
 sub getChildNode {
-	return;
+    return;
+}
+
+sub getAttribute {
+    return;
+}
+
+sub getAttributes {
+    return wantarray ? () : [];
 }
 
 sub getAttributeNodes {
-	return wantarray ? () : [];
+    shift->getAttributes(@_);
 }
 
 sub getNamespaceNodes {
-	return wantarray ? () : [];
+    return wantarray ? () : [];
 }
 
 sub getLocalName {
-	return;
+    return;
 }
 
 sub string_value { return; }
 
 sub get_pos {
-	my $self = shift;
-	return $self->[XML::XPath::Node::node_pos];
+    my $self = shift;
+    return $self->[XML::XPath::Node::node_pos];
 }
 
 sub set_pos {
-	my $self = shift;
-	$self->[XML::XPath::Node::node_pos] = shift;
+    my $self = shift;
+    $self->[XML::XPath::Node::node_pos] = shift;
+}
+
+sub get_global_pos {
+    my $self = shift;
+    return $self->[XML::XPath::Node::node_global_pos];
 }
 
 sub getPreviousSibling {
-	my $self = shift;
-	my $pos = $self->[XML::XPath::Node::node_pos];
-	return unless $self->[XML::XPath::Node::node_parent];
-	return $self->[XML::XPath::Node::node_parent]->getChildNode($pos);
+    my $self = shift;
+    my $pos = $self->[XML::XPath::Node::node_pos];
+    return unless $self->[XML::XPath::Node::node_parent];
+    return $self->[XML::XPath::Node::node_parent]->getChildNode($pos);
 }
 
 sub getNextSibling {
-	my $self = shift;
-	my $pos = $self->[XML::XPath::Node::node_pos];
-	return unless $self->[XML::XPath::Node::node_parent];
-	return $self->[XML::XPath::Node::node_parent]->getChildNode($pos + 2);
+    my $self = shift;
+    my $pos = $self->[XML::XPath::Node::node_pos];
+    return unless $self->[XML::XPath::Node::node_parent];
+    return $self->[XML::XPath::Node::node_parent]->getChildNode($pos + 2);
 }
 
 sub setParentNode {
-	my $self = shift;
-	my $parent = shift;
-#	warn "SetParent of ", ref($self), " to ", $parent->[XML::XPath::Node::node_name], "\n";
-	$self->[XML::XPath::Node::node_parent] = $parent;
+    my $self = shift;
+    my $parent = shift;
+#    warn "SetParent of ", ref($self), " to ", $parent->[XML::XPath::Node::node_name], "\n";
+    $self->[XML::XPath::Node::node_parent] = $parent;
 }
 
 sub del_parent_link {
-	my $self = shift;
-	$self->[XML::XPath::Node::node_parent] = undef;
+    my $self = shift;
+    $self->[XML::XPath::Node::node_parent] = undef;
 }
 
 sub dispose {
-	my $self = shift;
-	foreach my $kid ($self->getChildNodes) {
-		$kid->dispose;
-	}
-	foreach my $kid ($self->getAttributeNodes) {
-		$kid->dispose;
-	}
-	foreach my $kid ($self->getNamespaceNodes) {
-		$kid->dispose;
-	}
-	$self->[XML::XPath::Node::node_parent] = undef;
+    my $self = shift;
+    foreach my $kid ($self->getChildNodes) {
+        $kid->dispose;
+    }
+    foreach my $kid ($self->getAttributeNodes) {
+        $kid->dispose;
+    }
+    foreach my $kid ($self->getNamespaceNodes) {
+        $kid->dispose;
+    }
+    $self->[XML::XPath::Node::node_parent] = undef;
+}
+
+sub find {
+    my $node = shift;
+    my ($path) = @_;
+    my $xp = XML::XPath->new(); # new is v. lightweight
+    return $xp->find($path, $node);
+}
+
+sub matches {
+    my $node = shift;
+    my ($path, $context) = @_;
+    my $xp = XML::XPath->new();
+    return $xp->matches($node, $path, $context);
 }
 
 sub to_sax {
-	my $self = shift;
-	unshift @_, 'Handler' if @_ == 1;
-	my %handlers = @_;
-	
+    my $self = shift;
+    unshift @_, 'Handler' if @_ == 1;
+    my %handlers = @_;
+    
     my $doch = $handlers{DocumentHandler} || $handlers{Handler};
     my $dtdh = $handlers{DTDHandler} || $handlers{Handler};
     my $enth = $handlers{EntityResolver} || $handlers{Handler};
@@ -354,7 +414,7 @@ sub DESTROY {}
 use Carp;
 
 sub _to_sax {
-	carp "_to_sax not implemented in ", ref($_[0]);
+    carp "_to_sax not implemented in ", ref($_[0]);
 }
 
 1;

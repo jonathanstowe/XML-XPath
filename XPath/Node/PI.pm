@@ -17,7 +17,12 @@ sub new {
 	my $class = shift;
 	my ($target, $data) = @_;
 	
-	my $self = [undef, undef, $target, $data];
+        my $pos = XML::XPath::Node->nextPos;
+        
+        my @vals;
+        @vals[node_global_pos, node_target, node_data] = 
+                ($pos, $target, $data);
+	my $self = \@vals;
 	bless $self, $class;
 }
 

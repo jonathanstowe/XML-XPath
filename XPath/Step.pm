@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.23 2000/08/15 16:17:04 matt Exp $
+# $Id: Step.pm,v 1.24 2000/08/18 10:21:52 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -76,6 +76,8 @@ sub evaluate {
 	
 	$self->{pp}->set_context_set(undef);
 
+        $initial_nodeset->sort;
+        
 	return $initial_nodeset;
 }
 
@@ -134,7 +136,7 @@ sub axis_attribute {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->getNodeType == ELEMENT_NODE;
+	return $results unless $context->isElementNode;
 	foreach my $attrib (@{$context->getAttributes}) {
 		if ($self->test_attribute($attrib)) {
 			$results->push($attrib);
@@ -146,7 +148,7 @@ sub axis_child {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->getNodeType == ELEMENT_NODE;
+	return $results unless $context->isElementNode;
 	foreach my $node (@{$context->getChildNodes}) {
 		if (node_test($self, $node)) {
 			$results->push($node);
@@ -158,7 +160,7 @@ sub axis_descendant {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->getNodeType == ELEMENT_NODE;
+	return $results unless $context->isElementNode;
 	foreach my $node (@{$context->getChildNodes}) {
 		if (node_test($self, $node)) {
 			$results->push($node);
@@ -185,10 +187,12 @@ sub axis_following {
 	
 	my $parent = $context->getParentNode;
 	return $results unless $parent;
-	my $i = $context->get_pos;
-	for (my $ref = $i + 1; $ref < @{$parent->getChildNodes}; $ref++) {
-		axis_descendant_or_self($self, $parent->getChildNodes->[$ref], $results);
-	}
+        
+        my $node = $context;
+        while ($node = $node->getNextSibling) {
+            axis_descendant_or_self($self, $node, $results);
+        }
+        axis_following($self, $parent, $results);
 }
 
 sub axis_following_sibling {
@@ -207,7 +211,7 @@ sub axis_namespace {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->getNodeType == ELEMENT_NODE;
+	return $results unless $context->isElementNode;
 	foreach my $ns (@{$context->getNamespaces}) {
 		if ($self->test_namespace($ns)) {
 			$results->push($ns);
@@ -232,15 +236,14 @@ sub axis_preceding {
 	
 	$self->{pp}->set_direction('reverse');
 	# all preceding nodes in document order, except ancestors
-	# (go through each sibling, and get decendant-or-self)
-	my $i = $context->get_pos;
-	my $ref = 0;
-	my $kids = $context->getParentNode->getChildNodes;
-	my $node;
-	while(($node = $kids->[$ref]) && "$$node" ne "$context") {
-		axis_descendant_or_self($self, $node, $results);
-		$ref++;
-	}
+        my $parent = $context->getParentNode;
+        return $results unless $parent;
+       
+        my $node = $context;
+        while ($node = $node->getPreviousSibling) {
+            axis_descendant_or_self($self, $node, $results);
+        }
+        axis_preceding($self, $parent, $results);
 }
 
 sub axis_preceding_sibling {
@@ -280,23 +283,25 @@ sub node_test {
 	
 	my $test = $self->{test};
 	
-	if ($test eq '*' || $test eq 'node()') {
-		return 1 if $node->isElementNode;
+        return 1 if $test eq 'node()';
+        
+	if ($test eq '*') {
+            return 1 if $node->isElementNode && $node->getParentNode;
 	}
 	
 	if ($test =~ /^(text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
 		if ($test eq 'text()') {
-			return 1 if $node->getNodeType == TEXT_NODE;
+			return 1 if $node->isTextNode;
 		}
 		elsif ($test eq 'comment()') {
-			return 1 if $node->getNodeType == COMMENT_NODE;
+			return 1 if $node->isCommentNode;
 		}
 		elsif ($test eq 'processing-instruction()') {
 			warn "Unreachable code???";
-			return 1 if $node->getNodeType == PROCESSING_INSTRUCTION_NODE;
+			return 1 if $node->isPINode;
 		}
 		elsif ($test eq 'processing-instruction') {
-			return unless $node->getNodeType == PROCESSING_INSTRUCTION_NODE;
+			return unless $node->isPINode;
 			if (my $val = $self->{literal}->value) {
 				return 1 if $node->getTarget eq $val;
 			}
@@ -308,6 +313,8 @@ sub node_test {
 
 	return unless $node->isElementNode;
 	
+        local $^W;
+        
 	if ($test =~ /^$XML::XPath::Parser::NCWild$/o) {
 		return 1 if $node->getPrefix eq $1;
 	}

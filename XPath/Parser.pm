@@ -669,8 +669,12 @@ sub is_step {
 	
 	my $token = $tokens->[$self->{_tokpos}];
 	
+        return unless defined $token;
+        
 	debug("SUB: Checking if '$token' is a step\n");
 	
+        local $^W;
+        
 	if ($token eq 'processing-instruction') {
 		return 1;
 	}

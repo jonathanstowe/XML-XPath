@@ -227,6 +227,7 @@ sub op_equals {
 		elsif ($lh_results->isa('XML::XPath::Number') ||
 				$rh_results->isa('XML::XPath::Number')) {
 			# if either is a number
+                        local $^W; # 'number' might result in undef
 			if ($functioner->_execute('number', $node, $lh_results)->value
 					== $functioner->_execute('number', $node, $rh_results)->value) {
 				return XML::XPath::Boolean->True;
@@ -544,6 +545,7 @@ sub op_union {
 			$results->push($rhnode)
 					unless exists $found{"$rhnode"};
 		}
+                $results->sort;
 		return $results;
 	}
 	die "Both sides of a union must be Node Sets\n";

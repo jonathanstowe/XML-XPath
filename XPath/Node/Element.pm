@@ -16,8 +16,14 @@ use XML::XPath::Node ':node_keys';
 sub new {
 	my $class = shift;
 	my ($tag, $prefix) = @_;
+        
+        my $pos = XML::XPath::Node->nextPos;
 	
-	my $self = [undef, undef, $prefix, [], $tag];
+        my @vals;
+        @vals[node_global_pos, node_prefix, node_children, node_name] =
+                ($pos, $prefix, [], $tag);
+        
+	my $self = \@vals;
 	bless $self, $class;
 }
 
@@ -34,11 +40,36 @@ sub appendChild {
 	$newnode->set_pos($#{$self->[node_children]});
 }
 
+sub removeChild {
+    my $self = shift;
+    my $delnode = shift;
+    
+    my $pos = $delnode->get_pos;
+    
+#    warn "removeChild: $pos\n";
+    
+#    warn "children: ", scalar @{$self->[node_children]}, "\n";
+    
+#    my $node = $self->[node_children][$pos];
+#    warn "child at $pos is: $node\n";
+    
+    splice @{$self->[node_children]}, $pos, 1;
+    
+#    warn "children now: ", scalar @{$self->[node_children]}, "\n";
+    
+    for (my $i = $pos; $i < @{$self->[node_children]}; $i++) {
+#        warn "Changing pos of child: $i\n";
+        $self->[node_children][$i]->set_pos($i);
+    }
+    
+    $delnode->DESTROY;
+}
+
 sub appendIdElement {
 	my $self = shift;
 	my ($val, $element) = @_;
 #	warn "Adding '$val' to ID hash\n";
-	$self->[7]{$val} = $element;
+	$self->[node_ids]{$val} = $element;
 }
 
 sub DESTROY {
@@ -63,6 +94,8 @@ sub getName {
 	my $self = shift;
 	$self->[node_name];
 }
+
+*getTagName = \&getName;
 
 sub getLocalName {
 	my $self = shift;
@@ -105,15 +138,32 @@ sub getAttributes {
 	return wantarray ? () : [];
 }
 
-sub getAttributeNodes { goto &getAttributes; }
-
 sub appendAttribute {
 	my $self = shift;
 	my ($attribute) = @_;
 	push @{$self->[node_attribs]}, $attribute;
 	$attribute->setParentNode($self);
 	$attribute->set_pos($#{$self->[node_attribs]});
-}	
+}
+
+sub removeAttribute {
+    my $self = shift;
+    my $attrib = shift;
+    
+    if (!ref($attrib)) {
+        $attrib = $self->getAttribute($attrib);
+    }
+    
+    my $pos = $attrib->get_pos;
+    
+    splice @{$self->[node_attribs]}, $pos, 1;
+    
+    for (my $i = $pos; $i < @{$self->[node_attribs]}; $i++) {
+        $self->[node_attribs][$i]->set_pos($i);
+    }
+    
+    $attrib->DESTROY;    
+}
 
 sub getNamespace {
 	my $self = shift;

@@ -13,6 +13,12 @@ sub new {
 	bless [], $class;
 }
 
+sub sort {
+    my $self = shift;
+    @$self = sort { $a->get_global_pos <=> $b->get_global_pos } @$self;
+    return $self;
+}
+
 sub pop {
 	my $self = shift;
 	pop @$self;
