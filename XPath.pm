@@ -5,7 +5,7 @@ package XML::XPath;
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.23';
+$VERSION = '0.24';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -77,6 +77,19 @@ sub findnodes {
 	
 	warn("findnodes returned a ", ref($results), " object\n") if $XML::XPath::Debug;
 	return XML::XPath::NodeSet->new();
+}
+
+sub findnodes_as_string {
+	my $self = shift;
+	my ($path, $context) = @_;
+	
+	my $results = $self->find($path, $context);
+	
+	if ($results->isa('XML::XPath::NodeSet')) {
+		return join('', map { XML::XPath::XMLParser::as_string($_) } $results->get_nodelist);
+	}
+	
+	return $results->value;
 }
 
 sub findvalue {
@@ -232,6 +245,11 @@ to do this.
 =head2 findnodes($path, [$context])
 
 Returns a list of nodes found by $path, optionally in context $context.
+
+=head2 findnodes_as_string($path, [$context])
+
+Returns the nodes found reproduced as XML. The result is not guaranteed
+to be valid XML though.
 
 =head2 findvalue($path, [$context])
 

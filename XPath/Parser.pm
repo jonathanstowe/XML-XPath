@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.19 2000/04/17 17:08:52 matt Exp $
+# $Id: Parser.pm,v 1.21 2000/04/23 15:36:19 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -49,6 +49,7 @@ sub new {
 	$self->{context_size} = 0; # total size of context
 	$self->{vars} = {};
 	$self->{direction} = 'forward';
+	$self->{cache} = {};
 	return $self;
 }
 
@@ -98,10 +99,15 @@ sub my_sub {
 sub parse {
 	my $self = shift;
 	my $path = shift;
+	if ($self->{cache}{$path}) {
+		return $self->{cache}{$path};
+	}
 	my $tokens = $self->tokenize($path);
 
 	$self->{_tokpos} = 0;
 	my $tree = $self->analyze($tokens);
+	
+	$self->{cache}{$path} = $tree;
 	
 	debug("PARSED Expr to:\n", $tree->as_string, "\n");
 	
@@ -131,7 +137,7 @@ sub tokenize {
 			\@$QName| # match attrib
 			\$$QName| # match variable reference
 			($AXIS_NAME)?(\*|$NCName\:\*|$QName)| # match NCName,NodeType,Axis::Test
-			<=|\-|>=|\/\/|and|or|mod|div| # multi-char seps
+			\!=|<=|\-|>=|\/\/|and|or|mod|div| # multi-char seps
 			[,\+=\|<>\/\(\[\]\)]| # single char seps
 			(?<!(\@|\(|\[))\*| # multiply operator rules (see xpath spec)
 			(?<!::)\*|
