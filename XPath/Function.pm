@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.24 2001/05/06 22:00:52 matt Exp $
+# $Id: Function.pm,v 1.26 2002/12/26 17:24:50 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -355,9 +355,9 @@ sub sum {
     my $self = shift;
     my ($node, @params) = @_;
     die "sum: Parameter must be a NodeSet\n" unless $params[0]->isa('XML::XPath::NodeSet');
-    my $sum;
+    my $sum = 0;
     foreach my $node ($params[0]->get_nodelist) {
-        $sum += $node->to_number->value;
+        $sum += $self->number($node)->value;
     }
     return XML::XPath::Number->new($sum);
 }

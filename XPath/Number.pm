@@ -1,4 +1,4 @@
-# $Id: Number.pm,v 1.13 2001/03/16 11:10:08 matt Exp $
+# $Id: Number.pm,v 1.14 2002/12/26 17:57:09 matt Exp $
 
 package XML::XPath::Number;
 use XML::XPath::Boolean;
@@ -13,7 +13,7 @@ use overload
 sub new {
     my $class = shift;
     my $number = shift;
-    if ($number !~ /^\s*(\d+(\.\d*)?|\.\d+)\s*$/) {
+    if ($number !~ /^\s*[+-]?(\d+(\.\d*)?|\.\d+)\s*$/) {
         $number = undef;
     }
     else {

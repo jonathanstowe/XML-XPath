@@ -3,4 +3,6 @@ $Id: TODO,v 1.5 2001/01/19 16:00:39 matt Exp $
 TODO List for XML::XPath
 
 - Mostly None. Bug fix cycle now.
-- Only TODO is somehow to allow namespaced extension functions
+- Somehow to allow namespaced extension functions
+- Make SAX parser a SAX2 parser
+

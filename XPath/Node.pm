@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.12 2000/11/30 16:09:26 matt Exp $
+# $Id: Node.pm,v 1.13 2002/12/26 17:24:50 matt Exp $
 
 package XML::XPath::Node;
 
@@ -464,6 +464,11 @@ sub dispose {
         $kid->dispose;
     }
     $self->[XML::XPath::Node::node_parent] = undef;
+}
+
+sub to_number {
+    my $num = shift->string_value;
+    return XML::XPath::Number->new($num);
 }
 
 sub find {

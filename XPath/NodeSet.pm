@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.16 2001/04/30 12:25:59 matt Exp $
+# $Id: NodeSet.pm,v 1.17 2002/04/24 13:06:08 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -64,6 +64,11 @@ sub get_node { # uses array index starting at 1, not 0
 	my $self = CORE::shift;
 	my ($pos) = @_;
 	$self->[$pos - 1];
+}
+
+sub getRootNode {
+    my $self = CORE::shift;
+    return $self->[0]->getRootNode;
 }
 
 sub get_nodelist {

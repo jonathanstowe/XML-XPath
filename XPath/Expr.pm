@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.18 2001/03/16 11:19:16 matt Exp $
+# $Id: Expr.pm,v 1.20 2003/01/26 19:33:24 matt Exp $
 
 package XML::XPath::Expr;
 use strict;
@@ -330,7 +330,7 @@ sub op_nequals {
 
 sub op_le {
     my ($node, $lhs, $rhs) = @_;
-    op_ge($node, $rhs, $lhs);
+    op_gt($node, $rhs, $lhs);
 }
 
 sub op_ge {

@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.53 2001/11/26 17:41:41 matt Exp $
+# $Id: XPath.pm,v 1.56 2003/01/26 19:33:17 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '1.12';
+$VERSION = '1.13';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -146,7 +146,7 @@ sub findvalue {
     my $results = $self->find($path, $context);
     
     if ($results->isa('XML::XPath::NodeSet')) {
-        return $results->to_literal->value;
+        return $results->to_literal;
     }
     
     return $results;
@@ -155,7 +155,7 @@ sub findvalue {
 sub exists
 {
     my $self = shift;
-    my ($path, $context) = shift;
+    my ($path, $context) = @_;
     $path = '/' if (!defined $path);
     my @nodeset = $self->findnodes($path, $context);
     return 1 if (scalar( @nodeset ));

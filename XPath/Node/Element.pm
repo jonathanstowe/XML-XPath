@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.12 2001/03/07 16:16:40 matt Exp $
+# $Id: Element.pm,v 1.14 2002/12/26 17:24:50 matt Exp $
 
 package XML::XPath::Node::Element;
 
