@@ -1,16 +1,6 @@
-$Id: TODO,v 1.4 2000/05/08 13:13:51 matt Exp $
+$Id: TODO,v 1.5 2001/01/19 16:00:39 matt Exp $
 
 TODO List for XML::XPath
 
-- Functions (see Function.pm) - almost all done as of 0.50
-- Operators (see Expr.pm) - all complete
-- to_boolean (in all classes) - done
-- Precedence (Parser.pm) - done (re-written)
-- Optimisations
-	This is a tough one. There are lots of little
-	optimisations that can occur. For example, the
-	predicate '[' Number ']' can be directly optimised
-	to an array access. Same goes for predicates
-	containing any of the functions last(), first(),
-	etc.
-- SAX Handler/Driver - mostly done. Waiting for SAX2/Namespaces
+- Mostly None. Bug fix cycle now.
+- Only TODO is somehow to allow namespaced extension functions

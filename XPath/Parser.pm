@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.28 2000/09/25 13:33:11 matt Exp $
+# $Id: Parser.pm,v 1.31 2001/01/19 15:49:31 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -13,7 +13,7 @@ use vars qw/
         $AXIS_NAME 
         %AXES 
         $LITERAL
-                %CACHE/;
+        %CACHE/;
 
 use XML::XPath::XMLParser;
 use XML::XPath::Step;
@@ -100,18 +100,6 @@ sub get_namespace {
     }
 }
 
-sub get_direction {
-    my $self = shift;
-    $self->{direction};
-}
-
-sub set_direction {
-    my $self = shift;
-    my ($direction) = @_;
-    die "Invalid direction" unless $direction =~ /^(forward|reverse)$/;
-    $self->{direction} = $direction;
-}
-
 sub get_context_set { $_[0]->{context_set}; }
 sub set_context_set { $_[0]->{context_set} = $_[1]; }
 sub get_context_pos { $_[0]->{context_pos}; }
@@ -133,6 +121,11 @@ sub parse {
 
     $self->{_tokpos} = 0;
     my $tree = $self->analyze($tokens);
+    
+    if ($self->{_tokpos} < scalar(@$tokens)) {
+        # didn't manage to parse entire expression - throw an exception
+        die "Parse of expression $path failed - junk after end of expression: $tokens->[$self->{_tokpos}]";
+    }
     
     $CACHE{$path} = $tree;
     
@@ -691,21 +684,21 @@ sub Step {
             $step = XML::XPath::Step->new($self, 'child',
                             XML::XPath::Step::test_nt_comment);
         }
-                elsif ($token eq 'text()') {
-                    $self->{_tokpos}++;
-                    $step = XML::XPath::Step->new($self, 'child',
-                            XML::XPath::Step::test_nt_text);
-                }
-                elsif ($token eq 'node()') {
-                    $self->{_tokpos}++;
-                    $step = XML::XPath::Step->new($self, 'child',
-                            XML::XPath::Step::test_nt_node);
-                }
-                elsif ($token eq 'processing-instruction()') {
-                    $self->{_tokpos}++;
-                    $step = XML::XPath::Step->new($self, 'child',
-                            XML::XPath::Step::test_nt_pi);
-                }
+        elsif ($token eq 'text()') {
+            $self->{_tokpos}++;
+            $step = XML::XPath::Step->new($self, 'child',
+                    XML::XPath::Step::test_nt_text);
+        }
+        elsif ($token eq 'node()') {
+            $self->{_tokpos}++;
+            $step = XML::XPath::Step->new($self, 'child',
+                    XML::XPath::Step::test_nt_node);
+        }
+        elsif ($token eq 'processing-instruction()') {
+            $self->{_tokpos}++;
+            $step = XML::XPath::Step->new($self, 'child',
+                    XML::XPath::Step::test_nt_pi);
+        }
         elsif ($token =~ /^$AXIS_NAME($NCWild|$QName|$QNWild|$NODE_TYPE)$/o) {
                     my $axis = $1;
                     $self->{_tokpos}++;
@@ -721,38 +714,47 @@ sub Step {
             }
             elsif ($token =~ /^($NCName):\*$/o) { # ns:*
                 $step = XML::XPath::Step->new($self, $axis, 
-                                    XML::XPath::Step::test_ncwild,
+                                    (($axis eq 'attribute') ? 
+                                    XML::XPath::Step::test_attr_ncwild
+                                        :
+                                    XML::XPath::Step::test_ncwild),
                                     $1);
             }
             elsif ($token =~ /^$QNWild$/o) { # *
                 $step = XML::XPath::Step->new($self, $axis, 
-                                    XML::XPath::Step::test_any,
+                                    (($axis eq 'attribute') ?
+                                    XML::XPath::Step::test_attr_any
+                                        :
+                                    XML::XPath::Step::test_any),
                                     $token);
             }
             elsif ($token =~ /^$QName$/o) { # name:name
                 $step = XML::XPath::Step->new($self, $axis, 
-                                    XML::XPath::Step::test_qname,
+                                    (($axis eq 'attribute') ?
+                                    XML::XPath::Step::test_attr_qname
+                                        :
+                                    XML::XPath::Step::test_qname),
                                     $token);
             }
             elsif ($token eq 'comment()') {
                 $step = XML::XPath::Step->new($self, $axis,
                                 XML::XPath::Step::test_nt_comment);
             }
-                    elsif ($token eq 'text()') {
-                        $step = XML::XPath::Step->new($self, $axis,
-                                XML::XPath::Step::test_nt_text);
-                    }
-                    elsif ($token eq 'node()') {
-                        $step = XML::XPath::Step->new($self, $axis,
-                                XML::XPath::Step::test_nt_node);
-                    }
-                    elsif ($token eq 'processing-instruction()') {
-                        $step = XML::XPath::Step->new($self, $axis,
-                                XML::XPath::Step::test_nt_pi);
-                    }
-                    else {
-                        die "Shouldn't get here";
-                    }
+            elsif ($token eq 'text()') {
+                $step = XML::XPath::Step->new($self, $axis,
+                        XML::XPath::Step::test_nt_text);
+            }
+            elsif ($token eq 'node()') {
+                $step = XML::XPath::Step->new($self, $axis,
+                        XML::XPath::Step::test_nt_node);
+            }
+            elsif ($token eq 'processing-instruction()') {
+                $step = XML::XPath::Step->new($self, $axis,
+                        XML::XPath::Step::test_nt_pi);
+            }
+            else {
+                die "Shouldn't get here";
+            }
         }
         else {
             die "token $token doesn't match format of a 'Step'\n";
@@ -772,7 +774,7 @@ sub is_step {
     
     my $token = $tokens->[$self->{_tokpos}];
     
-        return unless defined $token;
+    return unless defined $token;
         
     debug("SUB: Checking if '$token' is a step\n");
     
@@ -781,21 +783,20 @@ sub is_step {
     if ($token eq 'processing-instruction') {
         return 1;
     }
-    elsif ($token =~ /^\@($QName|\*)$/o) {
+    elsif ($token =~ /^\@($NCWild|$QName|$QNWild)$/o) {
         return 1;
     }
-    elsif ($token =~ /^$QName$/o && $tokens->[$self->{_tokpos}+1] ne '(') {
-        return 1;
-    }
-    elsif ($token =~ /^\*$/) {
+    elsif ($token =~ /^($NCWild|$QName|$QNWild)$/o && $tokens->[$self->{_tokpos}+1] ne '(') {
         return 1;
     }
     elsif ($token =~ /^$NODE_TYPE$/o) {
         return 1;
     }
-    elsif ($token =~ /^$AXIS_NAME($QName|\*|$NODE_TYPE)$/o) {
+    elsif ($token =~ /^$AXIS_NAME($NCWild|$QName|$QNWild|$NODE_TYPE)$/o) {
         return 1;
     }
+    
+    debug("SUB: '$token' not a step\n");
 
     return;
 }

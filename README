@@ -168,24 +168,19 @@ On Garbage Collection
     you have a tree instead.
 
 Example
-    There are some complete XPath examples on
-    http://xml.sergeant.org/xpath.xml
+    Please see the test files in t/ for examples on how to use
+    XPath.
 
 Support/Author
-    This module is copyright 2000 Fastnet Software Ltd. This is free
+    This module is copyright 2000 AxKit.com Ltd. This is free
     software, and as such comes with NO WARRANTY. No dates are used
     in this module. You may distribute this module under the terms
-    of either the Gnu GPL, or under specific licencing from Fastnet
-    Software Ltd. Special free licencing consideration will be given
-    to similarly free software. Please don't flame me for this
-    licence - I've put a lot of hours into this code, and if someone
-    uses my software in their product I expect them to have the
-    courtesy to contact me first.
+    of either the Gnu GPL, or the Artistic License (the same terms
+    as Perl itself).
 
-    Full support for this module is available from Fastnet Software
-    Ltd on a pay per incident basis. Alternatively subscribe to the
-    Perl-XML mailing list at the URL
-    http://listserv.activestate.com/mailman/listinfo/perl-xml
+    For support, please subscribe to the Perl-XML mailing list at
+    the URL http://listserv.activestate.com/mailman/listinfo/perl-
+    xml
 
     Matt Sergeant, matt@sergeant.org
 

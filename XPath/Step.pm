@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.29 2000/11/30 16:37:34 matt Exp $
+# $Id: Step.pm,v 1.31 2001/01/19 15:52:05 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -58,15 +58,18 @@ sub as_string {
     elsif ($test == test_nt_comment) {
         $string .= 'comment()';
     }
-        elsif ($test == test_nt_text) {
-            $string .= 'text()';
-        }
-        elsif ($test == test_nt_node) {
-            $string .= 'node()';
-        }
-        else {
-            $string .= $self->{literal};
-        }
+    elsif ($test == test_nt_text) {
+        $string .= 'text()';
+    }
+    elsif ($test == test_nt_node) {
+        $string .= 'node()';
+    }
+    elsif ($test == test_ncwild || $test == test_attr_ncwild) {
+        $string .= $self->{literal} . ':*';
+    }
+    else {
+        $string .= $self->{literal};
+    }
     
     if (@{$self->{predicates}}) {
         foreach (@{$self->{predicates}}) {
@@ -118,9 +121,6 @@ sub evaluate_node {
     my $self = shift;
     my $context = shift;
     
-    # default direction
-    $self->{pp}->set_direction('forward');
-    
 #    warn "Evaluate node: $self->{axis}\n";
     
 #    warn "Node: ", $context->[node_name], "\n";
@@ -142,7 +142,6 @@ sub axis_ancestor {
     my $self = shift;
     my ($context, $results) = @_;
     
-    $self->{pp}->set_direction('reverse');
     my $parent = $context->getParentNode;
         
     START:
@@ -158,8 +157,6 @@ sub axis_ancestor_or_self {
     my $self = shift;
     my ($context, $results) = @_;
     
-    $self->{pp}->set_direction('reverse');
-        
     START:
     return $results unless $context;
     if (node_test($self, $context)) {
@@ -276,8 +273,6 @@ sub axis_preceding {
     my $self = shift;
     my ($context, $results) = @_;
     
-    $self->{pp}->set_direction('reverse');
-
     # all preceding nodes in document order, except ancestors
     
     START:
@@ -296,8 +291,6 @@ sub axis_preceding {
 sub axis_preceding_sibling {
     my $self = shift;
     my ($context, $results) = @_;
-    
-    $self->{pp}->set_direction('reverse');
     
     while ($context = $context->getPreviousSibling) {
         if (node_test($self, $context)) {

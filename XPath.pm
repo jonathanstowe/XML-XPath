@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.43 2000/11/30 16:36:36 matt Exp $
+# $Id: XPath.pm,v 1.44 2001/01/19 16:00:03 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '1.03';
+$VERSION = '1.04';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -370,22 +370,16 @@ when you're finished, or $tree->dispose() if you have a tree instead.
 
 =head1 Example
 
-There are some complete XPath examples on http://xml.sergeant.org/xpath.xml
+Please see the test files in t/ for examples on how to use XPath.
 
 =head1 Support/Author
 
-This module is copyright 2000 Fastnet Software Ltd. This is free
+This module is copyright 2000 AxKit.com Ltd. This is free
 software, and as such comes with NO WARRANTY. No dates are used in this
 module. You may distribute this module under the terms of either the
-Gnu GPL,  or under specific licencing from Fastnet Software Ltd.
-Special free licencing consideration will be given to similarly free
-software. Please don't flame me for this licence - I've put a lot of
-hours into this code, and if someone uses my software in their product
-I expect them to have the courtesy to contact me first.
+Gnu GPL,  or the Artistic License (the same terms as Perl itself).
 
-Full support for this module is available from Fastnet Software Ltd on
-a pay per incident basis. Alternatively subscribe to the Perl-XML
-mailing list at the URL 
+For support, please subscribe to the Perl-XML mailing list at the URL 
 http://listserv.activestate.com/mailman/listinfo/perl-xml
 
 Matt Sergeant, matt@sergeant.org
