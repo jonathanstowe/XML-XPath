@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.31 2001/01/19 15:49:31 matt Exp $
+# $Id: Parser.pm,v 1.32 2001/02/26 14:58:17 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -236,7 +236,7 @@ sub OrExpr {
     
     my $expr = AndExpr($self, $tokens); 
     while (match($self, $tokens, 'or')) {
-        my $or_expr = XML::XPath::Expr->new();
+        my $or_expr = XML::XPath::Expr->new($self);
         $or_expr->set_lhs($expr);
         $or_expr->set_op('or');
 
@@ -256,7 +256,7 @@ sub AndExpr {
     
     my $expr = EqualityExpr($self, $tokens);
     while (match($self, $tokens, 'and')) {
-        my $and_expr = XML::XPath::Expr->new();
+        my $and_expr = XML::XPath::Expr->new($self);
         $and_expr->set_lhs($expr);
         $and_expr->set_op('and');
         
@@ -276,7 +276,7 @@ sub EqualityExpr {
     
     my $expr = RelationalExpr($self, $tokens);
     while (match($self, $tokens, '!?=')) {
-        my $eq_expr = XML::XPath::Expr->new();
+        my $eq_expr = XML::XPath::Expr->new($self);
         $eq_expr->set_lhs($expr);
         $eq_expr->set_op($self->{_curr_match});
         
@@ -296,7 +296,7 @@ sub RelationalExpr {
     
     my $expr = AdditiveExpr($self, $tokens);
     while (match($self, $tokens, '(<|>|<=|>=)')) {
-        my $rel_expr = XML::XPath::Expr->new();
+        my $rel_expr = XML::XPath::Expr->new($self);
         $rel_expr->set_lhs($expr);
         $rel_expr->set_op($self->{_curr_match});
         
@@ -316,7 +316,7 @@ sub AdditiveExpr {
     
     my $expr = MultiplicativeExpr($self, $tokens);
     while (match($self, $tokens, '[\\+\\-]')) {
-        my $add_expr = XML::XPath::Expr->new();
+        my $add_expr = XML::XPath::Expr->new($self);
         $add_expr->set_lhs($expr);
         $add_expr->set_op($self->{_curr_match});
         
@@ -336,7 +336,7 @@ sub MultiplicativeExpr {
     
     my $expr = UnaryExpr($self, $tokens);
     while (match($self, $tokens, '(\\*|div|mod)')) {
-        my $mult_expr = XML::XPath::Expr->new();
+        my $mult_expr = XML::XPath::Expr->new($self);
         $mult_expr->set_lhs($expr);
         $mult_expr->set_op($self->{_curr_match});
         
@@ -355,7 +355,7 @@ sub UnaryExpr {
     debug("in SUB\n");
     
     if (match($self, $tokens, '-')) {
-        my $expr = XML::XPath::Expr->new();
+        my $expr = XML::XPath::Expr->new($self);
         $expr->set_lhs(XML::XPath::Number->new(0));
         $expr->set_op('-');
         $expr->set_rhs(UnaryExpr($self, $tokens));
@@ -373,7 +373,7 @@ sub UnionExpr {
     
     my $expr = PathExpr($self, $tokens);
     while (match($self, $tokens, '\\|')) {
-        my $un_expr = XML::XPath::Expr->new();
+        my $un_expr = XML::XPath::Expr->new($self);
         $un_expr->set_lhs($expr);
         $un_expr->set_op('|');
         
@@ -397,7 +397,7 @@ sub PathExpr {
         
     # LocationPath either starts with "/", "//", ".", ".." or a proper Step.
     
-    my $expr = XML::XPath::Expr->new();
+    my $expr = XML::XPath::Expr->new($self);
     
     my $test = $tokens->[$self->{_tokpos}];
     
@@ -423,7 +423,7 @@ sub PathExpr {
                                         XML::XPath::Step::test_nt_node);
             }
             push @$loc_path, RelativeLocationPath($self, $tokens);
-            my $new_expr = XML::XPath::Expr->new();
+            my $new_expr = XML::XPath::Expr->new($self);
             $new_expr->set_lhs($loc_path);
             return $new_expr;
         }
@@ -452,7 +452,7 @@ sub PrimaryExpr {
 
     debug("in SUB\n");
     
-    my $expr = XML::XPath::Expr->new();
+    my $expr = XML::XPath::Expr->new($self);
     
     if (match($self, $tokens, $LITERAL)) {
         # new Literal with $self->{_curr_match}...

@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.31 2001/01/19 15:52:05 matt Exp $
+# $Id: Step.pm,v 1.32 2001/02/26 14:58:17 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -104,14 +104,9 @@ sub evaluate {
     
 #    warn "Step::evaluate initial nodeset size: ", $initial_nodeset->size, "\n";
     
-    # filter initial nodeset by each predicate
-    foreach my $predicate (@{$self->{predicates}}) {
-        $initial_nodeset = $self->filter_by_predicate($initial_nodeset, $predicate);
-    }
-    
     $self->{pp}->set_context_set(undef);
 
-        $initial_nodeset->sort;
+    $initial_nodeset->sort;
         
     return $initial_nodeset;
 }
@@ -135,6 +130,12 @@ sub evaluate_node {
     if ($@) {
         die "axis $method not implemented [$@]\n";
     }
+    
+    # filter initial nodeset by each predicate
+    foreach my $predicate (@{$self->{predicates}}) {
+        $results = $self->filter_by_predicate($results, $predicate);
+    }
+    
     return $results;
 }
 

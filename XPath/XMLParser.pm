@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.45 2000/10/02 08:27:23 matt Exp $
+# $Id: XMLParser.pm,v 1.46 2001/02/26 14:58:17 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -91,14 +91,16 @@ sub buildelement {
 
         my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
         push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
+#        warn "Current prefixes: ", join(", ", @prefixes), "\n";
         my @expanded = map {XML::Parser::Expat::expand_ns_prefix($e, $_)} @prefixes;
-    #    warn "current namespaces: ", join(", ", @expanded), "\n";
+#        warn "current namespaces: ", join(", ", @expanded), "\n";
 
         {
             local $^W;
             @exp_to_pre{@expanded} = @prefixes;
             %pre_to_exp = reverse %exp_to_pre;
 
+#            warn "$tag namespace is: ", $e->namespace($tag), "\n";
             $prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag)}; # || '#default'};
             $prefix = '' if $prefix eq '#default';
         }
@@ -111,6 +113,7 @@ sub buildelement {
 
     my $elname = $tag;    
     $tag = "$prefix:$tag" if $prefix;
+#    warn "Tag: $tag\n";
     my $node = XML::XPath::Node::Element->new($tag, $prefix);
     
     while (@$attribs) {

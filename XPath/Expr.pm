@@ -1,11 +1,12 @@
-# $Id: Expr.pm,v 1.15 2000/09/25 13:33:11 matt Exp $
+# $Id: Expr.pm,v 1.16 2001/02/26 14:58:17 matt Exp $
 
 package XML::XPath::Expr;
 use strict;
 
 sub new {
     my $class = shift;
-    bless { predicates => [] }, $class;
+    my ($pp) = @_;
+    bless { predicates => [], pp => $pp }, $class;
 }
 
 sub as_string {
@@ -38,6 +39,10 @@ sub set_rhs {
 
 sub push_predicate {
     my $self = shift;
+    
+    die "Only 1 predicate allowed on FilterExpr in W3C XPath 1.0"
+            if @{$self->{predicates}};
+    
     push @{$self->{predicates}}, $_[0];
 }
 
@@ -54,13 +59,28 @@ sub evaluate {
     
 #    warn "Evaluate Expr: ", $self->as_string, "\n";
     
+    my $results;
+    
     if ($self->{op}) {
         die ("No RHS of ", $self->as_string) unless $self->{rhs};
-        return $self->op_eval($node);
+        $results = $self->op_eval($node);
     }
     else {
-        return $self->{lhs}->evaluate($node);
+        $results = $self->{lhs}->evaluate($node);
     }
+    
+    if (my @predicates = @{$self->{predicates}}) {
+        if (!$results->isa('XML::XPath::NodeSet')) {
+            die "Can't have predicates execute on object type: " . ref($results);
+        }
+        
+        # filter initial nodeset by each predicate
+        foreach my $predicate (@{$self->{predicates}}) {
+            $results = $self->filter_by_predicate($results, $predicate);
+        }
+    }
+    
+    return $results;
 }
 
 sub op_eval {
@@ -481,6 +501,50 @@ sub op_union {
         return $results;
     }
     die "Both sides of a union must be Node Sets\n";
+}
+
+sub filter_by_predicate {
+    my $self = shift;
+    my ($nodeset, $predicate) = @_;
+    
+    # See spec section 2.4, paragraphs 2 & 3:
+    # For each node in the node-set to be filtered, the predicate Expr
+    # is evaluated with that node as the context node, with the number
+    # of nodes in the node set as the context size, and with the
+    # proximity position of the node in the node set with respect to
+    # the axis as the context position.
+    
+    if (!ref($nodeset)) { # use ref because nodeset has a bool context
+        die "No nodeset!!!";
+    }
+    
+#    warn "Filter by predicate: $predicate\n";
+    
+    my $newset = XML::XPath::NodeSet->new();
+    
+    for(my $i = 1; $i <= $nodeset->size; $i++) {
+        # set context set each time 'cos a loc-path in the expr could change it
+        $self->{pp}->set_context_set($nodeset);
+        $self->{pp}->set_context_pos($i);
+        my $result = $predicate->evaluate($nodeset->get_node($i));
+        if ($result->isa('XML::XPath::Boolean')) {
+            if ($result->value) {
+                $newset->push($nodeset->get_node($i));
+            }
+        }
+        elsif ($result->isa('XML::XPath::Number')) {
+            if ($result->value == $i) {
+                $newset->push($nodeset->get_node($i));
+            }
+        }
+        else {
+            if ($result->to_boolean->value) {
+                $newset->push($nodeset->get_node($i));
+            }
+        }
+    }
+    
+    return $newset;
 }
 
 1;
