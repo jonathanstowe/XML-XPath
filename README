@@ -1,108 +1,204 @@
-=head1 NAME
+NAME
+    XML::XPath - a set of modules for parsing and evaluating XPath
+    statements
 
-XML::XPath - An XPath parser and resolver
+DESCRIPTION
+    This module aims to comply exactly to the XPath specification at
+    http://www.w3.org/TR/xpath and yet allow extensions to be added
+    in the form of functions. Modules such as XSLT and XPointer may
+    need to do this as they support functionality beyond XPath.
 
-=head1 DESCRIPTION
+SYNOPSIS
+        use XML::XPath;
+        use XML::XPath::XMLParser;
+        
+        my $xp = XML::XPath->new(filename => 'test.xhtml');
+        
+        my $nodeset = $xp->find('/html/body/p'); # find all paragraphs
+        
+        foreach my $node ($nodeset->get_nodelist) {
+            print "FOUND\n\n", 
+                XML::XPath::XMLParser::as_string($node),
+                "\n\n";
+        }
 
-This module implements the W3C's XPath specification. It aims to
-be completely correct to the letter of the spec, and yet still
-allow extensions through the use of functions and variables, 
-such as are provided by XSLT and XPointer.
+DETAILS
+    There's an awful lot to all of this, so bear with it - if you
+    stick it out it should be worth it. Please get a good
+    understanding of XPath by reading the spec before asking me
+    questions. All of the classes and parts herein are named to be
+    synonimous with the names in the specification, so consult that
+    if you don't understand why I'm doing something in the code.
 
-=head2 Changes
+API
+    The API of XML::XPath itself is extremely simple to allow you to
+    get going almost immediately. The deeper API's are more complex,
+    but you shouldn't have to touch most of that.
 
-=over
+  new()
 
-=item 0.55
+    This constructor follows the often seen named parameter method
+    call. Parameters you can use are: filename, parser, xml, ioref
+    and context. The filename parameter specifies an XML file to
+    parse. The xml parameter specifies a string to parse, and the
+    ioref parameter specifies an ioref to parse. The context option
+    allows you to specify a context node. The context node has to be
+    in the format of a node as specified in the
+    XML::XPath::XMLParser manpage. The 4 parameters filename, xml,
+    ioref and context are mutually exclusive - you should only
+    specify one (if you specify anything other than context, the
+    context node is the root of your document). The parser option
+    allows you to pass in an already prepared XML::Parser object, to
+    save you having to create more than one in your application (if,
+    for example, you're doing more than just XPath).
 
-Added scalar context ability to findnodes() (for AxKit)
+        my $xp = XML::XPath->new( context => $node );
 
-=item 0.54
+    It is very much recommended that you use only 1 XPath object
+    throughout the life of your application. This is because the
+    object (and it's sub-objects) maintain certain bits of state
+    information that will be useful (such as XPath variables) to
+    later calls to find(). It's also a good idea because you'll use
+    less memory this way.
 
-Added id() speedup code
+  *nodeset* = find($path, [$context])
 
-=item 0.53
+    The find function takes an XPath expression (a string) and
+    returns either an XML::XPath::NodeSet object containing the
+    nodes it found (or empty if no nodes matched the path), or one
+    of XML::XPath::Literal (a string), XML::XPath::Number, or
+    XML::XPath::Boolean. It should always return something - and you
+    can use ->isa() to find out what it returned. If you need to
+    check how many nodes it found you should check $nodeset->size.
+    See the XML::XPath::NodeSet manpage. An optional second
+    parameter of a context node allows you to use this method
+    repeatedly, for example XSLT needs to do this.
 
-Bug fixes.
+  findnodes($path, [$context])
 
-=item 0.52
+    Returns a list of nodes found by $path, optionally in context
+    $context. In scalar context returns an XML::XPath::NodeSet
+    object.
 
-Bug fixes.
+  findnodes_as_string($path, [$context])
 
-=item 0.50
+    Returns the nodes found reproduced as XML. The result is not
+    guaranteed to be valid XML though.
 
-Major upgrade: new node object model
-Added matches() and findnodes_as_string() methods
-Beginings of attempt at SAX2 code
-Bug fixes
+  findvalue($path, [$context])
 
-=item 0.23
+    Returns either a `XML::XPath::Literal', a `XML::XPath::Boolean'
+    or a `XML::XPath::Number' object. If the path returns a NodeSet,
+    $nodeset->to_literal is called automatically for you (and thus a
+    `XML::XPath::Literal' is returned). Note that for each of the
+    objects stringification is overloaded, so you can just print the
+    value found, or manipulate it in the ways you would a normal
+    perl value (e.g. using regular expressions).
 
-Documentation Updates
-Fix for namespaces bug in 0.22
-Added findnodes and findvalue methods
+  matches($node, $path, [$context])
 
-=item 0.22
+    Returns true if the node matches the path (optionally in context
+    $context).
 
-Major performance enhancements for paths containing //
-More minor tweaks
+  set_namespace($prefix, $uri)
 
-=item 0.21
+    Sets the namespace prefix mapping to the uri.
 
-Performance enhancements to expression evalutation
-Complete re-write of the XPath Parser
-Numerous bug fixes
+    Normally in XML::XPath the prefixes in XPath node tests take
+    their context from the current node. This means that foo:bar
+    will always match an element <foo:bar> regardless of the
+    namespace that the prefix foo is mapped to (which might even
+    change within the document, resulting in unexpected results). In
+    order to make prefixes in XPath node tests actually map to a
+    real URI, you need to enable that via a call to the
+    set_namespace method of your XML::XPath object.
 
-=item 0.20
+  clear_namespaces()
 
-More bug fixes.
-Moved xpath to examples directory (windows can't cope).
-Added operator overloading so that Number, Literal and Boolean
-can be transparent in user applications.
+    Clears all previously set namespace mappings.
 
-=item 0.19
+  $XML::XPath::Namespaces
 
-(Again - skipped a few changes, bad me)
+    Set this to 0 if you *don't* want namespace processing to occur.
+    This will make everything a little (tiny) bit faster, but you'll
+    suffer for it, probably.
 
-More bug fixes
-Added xpath utility for resolving xpath's on the command line
+Node Object Model
+    See the XML::XPath::Node manpage, the XML::XPath::Node::Element
+    manpage, the XML::XPath::Node::Text manpage, the
+    XML::XPath::Node::Comment manpage, the
+    XML::XPath::Node::Attribute manpage, the
+    XML::XPath::Node::Namespace manpage, and the
+    XML::XPath::Node::PI manpage.
 
-=item 0.16
+On Garbage Collection
+    XPath nodes work in a special way that allows circular
+    references, and yet still lets Perl's reference counting garbage
+    collector to clean up the nodes after use. This should be
+    totally transparent to the user, with one caveat: If you free
+    your tree before letting go of a sub-tree, consider that playing
+    with fire and you may get burned. What does this mean to the
+    average user? Not much. Provided you don't free (or let go out
+    of scope) either the tree you passed to XML::XPath->new, or if
+    you didn't pass a tree, and passed a filename or IO-ref, then
+    provided you don't let the XML::XPath object go out of scope
+    before you let results of find() and its friends go out of
+    scope, then you'll be fine. Even if you do let the tree go out
+    of scope before results, you'll probably still be fine. The only
+    case where you may get stung is when the last part of your
+    path/query is either an ancestor or parent axis. In that case
+    the worst that will happen is you'll end up with a circular
+    reference that won't get cleared until interpreter destruction
+    time. You can get around that by explicitly calling $node-
+    >DESTROY on each of your result nodes, if you really need to do
+    that.
 
-There were a few uploads to CPAN where I didn't add to these changes...
+    Mail me direct if that's not clear. Note that it's not doom and
+    gloom. It's by no means perfect, but the worst that will happen
+    is a long running process could leak memory. Most long running
+    processes will therefore be able to explicitly be careful not to
+    free the tree (or XML::XPath object) before freeing results.
+    AxKit, an application that uses XML::XPath, does this and I
+    didn't have to make any changes to the code - it's already
+    sensible programming.
 
-Basically the module is a whole lot more robust.
-Fixed lots of bugs.
-Added lots of docs.
-Tested it more.
-Finished implementing the operators.
-Reduced it's memory usage.
-Added dispose and cleanup methods to remove circular refs.
+    If you *really* don't want all this to happen, then set the
+    variable $XML::XPath::SafeMode, and call $xp->cleanup() on the
+    XML::XPath object when you're finished, or $tree->dispose() if
+    you have a tree instead.
 
-=item 0.10
+Example
+    There are some complete XPath examples on
+    http://xml.sergeant.org/xpath.xml
 
-Upload to CPAN
-More docs
+Support/Author
+    This module is copyright 2000 Fastnet Software Ltd. This is free
+    software, and as such comes with NO WARRANTY. No dates are used
+    in this module. You may distribute this module under the terms
+    of either the Gnu GPL, or under specific licencing from Fastnet
+    Software Ltd. Special free licencing consideration will be given
+    to similarly free software. Please don't flame me for this
+    licence - I've put a lot of hours into this code, and if someone
+    uses my software in their product I expect them to have the
+    courtesy to contact me first.
 
-=item 0.09
+    Full support for this module is available from Fastnet Software
+    Ltd on a pay per incident basis. Alternatively subscribe to the
+    Perl-XML mailing list by mailing lyris@activestate.com with the
+    text:
 
-Lots of fixes and changes.
+        SUBSCRIBE Perl-XML
 
-Most functions implemented
-Attributes and Namespaces now done (mostly right).
-Added some documentation
-*** Added PerlSAX event generator ***
-Lots of as_string fixes
-Allow id(...) in LocationPaths (even though spec seems to disagree).
+    in the body of the message. There are lots of friendly people on
+    the list, including myself, and we'll be glad to get you
+    started.
 
-=item 0.08
+    Matt Sergeant, matt@sergeant.org
 
-Some functions and operators implemented
+SEE ALSO
+    the XML::XPath::Literal manpage, the XML::XPath::Boolean
+    manpage, the XML::XPath::Number manpage, the
+    XML::XPath::XMLParser manpage, the XML::XPath::NodeSet manpage,
+    the XML::XPath::PerlSAX manpage, the XML::XPath::Builder
+    manpage.
 
-=item 0.07
-
-This is the first public release
-
-=back
-
-$Id: README,v 1.14 2000/08/15 13:45:38 matt Exp $

@@ -1,11 +1,23 @@
-print "1..5\n";
+use Test;
+BEGIN { plan tests => 5 }
 
 use XML::XPath;
 
 #$XML::XPath::Debug = 1;
 #$XML::XPath::SafeMode = 1;
 
-my $rdf = <<'EOF';
+my $xp = XML::XPath->new(ioref => *DATA);
+ok($xp);
+
+my $nodeset = $xp->find('/rdf:RDF/channel//@rdf:*');
+ok($nodeset);
+
+ok($nodeset->size);
+
+ok(4);
+ok(5);
+
+__DATA__
 <?xml version="1.0"?>
 <rdf:RDF 
   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" 
@@ -45,15 +57,3 @@ rdf:about="http://meerkat.oreillynet.com/icons/meerkat-powered.jpg">
   </textinput>
 
 </rdf:RDF>
-EOF
-
-my $xp = XML::XPath->new(xml => $rdf);
-print !$xp ? 'not ' : ''; print "ok 1\n";
-
-my $nodeset = $xp->find('/rdf:RDF/channel//@rdf:*');
-print !$nodeset ? 'not ' : ''; print "ok 2\n";
-
-print !$nodeset->size ? 'not ' : ''; print "ok 3\n";
-
-print "ok 4\n";
-print "ok 5\n";

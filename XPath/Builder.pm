@@ -1,4 +1,4 @@
-# $Id: Builder.pm,v 1.6 2000/09/08 14:07:48 matt Exp $
+# $Id: Builder.pm,v 1.7 2000/09/25 13:33:11 matt Exp $
 
 package XML::XPath::Builder;
 

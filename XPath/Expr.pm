@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.14 2000/08/24 16:22:58 matt Exp $
+# $Id: Expr.pm,v 1.15 2000/09/25 13:33:11 matt Exp $
 
 package XML::XPath::Expr;
 use strict;

@@ -22,13 +22,17 @@ ok(@nodes, 2);
 
 my $comment = XML::XPath::Node::Comment->new("Before Comment");
 
-$root->insertBefore($nodes[0], $comment);
+$root->insertBefore($comment, $nodes[0]);
 
 my $other_comment = XML::XPath::Node::Comment->new("After Comment");
 
-$root->insertAfter($nodes[0], $other_comment);
+$root->insertAfter($other_comment, $nodes[0]);
 
 @nodes = $xp->findnodes('/Shop/node()');
+
+# foreach (@nodes) {
+#     print STDERR $_->toString;
+# }
 
 ok($nodes[1]->isCommentNode);
 ok($nodes[3]->isCommentNode);

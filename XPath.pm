@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.36 2000/08/28 10:05:53 matt Exp $
+# $Id: XPath.pm,v 1.39 2000/09/25 13:35:46 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '1.00';
+$VERSION = '1.01';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -19,49 +19,49 @@ use XML::XPath::Parser;
 
 # Parameters for new()
 my @options = qw(
-		filename
-		parser
-		xml
-		ioref
-		context
-		);
+        filename
+        parser
+        xml
+        ioref
+        context
+        );
 
 sub new {
-	my $proto = shift;
-	my $class = ref($proto) || $proto;
-	my %args = @_;
-	my %hash = map(( "_$_" => $args{$_} ), @options);
-	my $self = bless \%hash, $class;
+    my $proto = shift;
+    my $class = ref($proto) || $proto;
+    my %args = @_;
+    my %hash = map(( "_$_" => $args{$_} ), @options);
+    $hash{path_parser} = XML::XPath::Parser->new();
+    return bless \%hash, $class;
 }
 
 sub find {
-	my $self = shift;
-	my $path = shift;
-	my $context = shift;
-	die "No path to find" unless $path;
-	
-	if (!defined $context) {
-		$context = $self->get_context;
-	}
-	if (!defined $context) {
-		# Still no context? Need to parse...
-		my $parser = XML::XPath::XMLParser->new(
-				filename => $self->get_filename,
-				xml => $self->get_xml,
-				ioref => $self->get_ioref,
-				parser => $self->get_parser,
-				);
-		$context = $parser->parse;
-		$self->set_context($context);
-#		warn "CONTEXT:\n", Data::Dumper->Dumpxs([$context], ['context']);
-	}
-	
-	$self->{path_parser} ||= XML::XPath::Parser->new();
-	my $parsed_path = $self->{path_parser}->parse($path);
-#	warn "\n\nPATH: ", $parsed_path->as_string, "\n\n";
-	
-#	warn "evaluating path\n";
-	return $parsed_path->evaluate($context);
+    my $self = shift;
+    my $path = shift;
+    my $context = shift;
+    die "No path to find" unless $path;
+    
+    if (!defined $context) {
+        $context = $self->get_context;
+    }
+    if (!defined $context) {
+        # Still no context? Need to parse...
+        my $parser = XML::XPath::XMLParser->new(
+                filename => $self->get_filename,
+                xml => $self->get_xml,
+                ioref => $self->get_ioref,
+                parser => $self->get_parser,
+                );
+        $context = $parser->parse;
+        $self->set_context($context);
+#        warn "CONTEXT:\n", Data::Dumper->Dumpxs([$context], ['context']);
+    }
+    
+    my $parsed_path = $self->{path_parser}->parse($path);
+#    warn "\n\nPATH: ", $parsed_path->as_string, "\n\n";
+    
+#    warn "evaluating path\n";
+    return $parsed_path->evaluate($context);
 }
 
 # sub memsize {
@@ -74,115 +74,126 @@ sub find {
 # }
 # 
 sub findnodes {
-	my $self = shift;
-	my ($path, $context) = @_;
-	
-	my $results = $self->find($path, $context);
-	
-	if ($results->isa('XML::XPath::NodeSet')) {
-		return wantarray ? $results->get_nodelist : $results;
-#		return $results->get_nodelist;
-	}
-	
-	warn("findnodes returned a ", ref($results), " object\n") if $XML::XPath::Debug;
-	return wantarray ? () : XML::XPath::NodeSet->new();
+    my $self = shift;
+    my ($path, $context) = @_;
+    
+    my $results = $self->find($path, $context);
+    
+    if ($results->isa('XML::XPath::NodeSet')) {
+        return wantarray ? $results->get_nodelist : $results;
+#        return $results->get_nodelist;
+    }
+    
+#    warn("findnodes returned a ", ref($results), " object\n") if $XML::XPath::Debug;
+    return wantarray ? () : XML::XPath::NodeSet->new();
 }
 
 sub matches {
-	my $self = shift;
-	my ($node, $path, $context) = @_;
+    my $self = shift;
+    my ($node, $path, $context) = @_;
 
-	my @nodes = $self->findnodes($path, $context);
+    my @nodes = $self->findnodes($path, $context);
 
-	if (grep { "$node" eq "$_" } @nodes) {
-		return 1;
-	}
-	return;
+    if (grep { "$node" eq "$_" } @nodes) {
+        return 1;
+    }
+    return;
 }
 
 sub findnodes_as_string {
-	my $self = shift;
-	my ($path, $context) = @_;
-	
-	my $results = $self->find($path, $context);
-	
-	if ($results->isa('XML::XPath::NodeSet')) {
-		return $results->to_literal->value;
-	}
-	
-	return $results->value;
+    my $self = shift;
+    my ($path, $context) = @_;
+    
+    my $results = $self->find($path, $context);
+    
+    if ($results->isa('XML::XPath::NodeSet')) {
+        return $results->to_literal->value;
+    }
+    
+    return $results->value;
 }
 
 sub findvalue {
-	my $self = shift;
-	my ($path, $context) = @_;
-	
-	my $results = $self->find($path, $context);
-	
-	if ($results->isa('XML::XPath::NodeSet')) {
-		return $results->to_literal->value;
-	}
-	
-	return $results;
+    my $self = shift;
+    my ($path, $context) = @_;
+    
+    my $results = $self->find($path, $context);
+    
+    if ($results->isa('XML::XPath::NodeSet')) {
+        return $results->to_literal->value;
+    }
+    
+    return $results;
 }
 
 sub get_filename {
-	my $self = shift;
-	$self->{_filename};
+    my $self = shift;
+    $self->{_filename};
 }
 
 sub set_filename {
-	my $self = shift;
-	$self->{_filename} = shift;
+    my $self = shift;
+    $self->{_filename} = shift;
 }
 
 sub get_parser {
-	my $self = shift;
-	$self->{_parser};
+    my $self = shift;
+    $self->{_parser};
 }
 
 sub set_parser {
-	my $self = shift;
-	$self->{_parser} = shift;
+    my $self = shift;
+    $self->{_parser} = shift;
 }
 
 sub get_xml {
-	my $self = shift;
-	$self->{_xml};
+    my $self = shift;
+    $self->{_xml};
 }
 
 sub set_xml {
-	my $self = shift;
-	$self->{_xml} = shift;
+    my $self = shift;
+    $self->{_xml} = shift;
 }
 
 sub get_ioref {
-	my $self = shift;
-	$self->{_ioref};
+    my $self = shift;
+    $self->{_ioref};
 }
 
 sub set_ioref {
-	my $self = shift;
-	$self->{_ioref} = shift;
+    my $self = shift;
+    $self->{_ioref} = shift;
 }
 
 sub get_context {
-	my $self = shift;
-	$self->{_context};
+    my $self = shift;
+    $self->{_context};
 }
 
 sub set_context {
-	my $self = shift;
-	$self->{_context} = shift;
+    my $self = shift;
+    $self->{_context} = shift;
 }
 
 sub cleanup {
-	my $self = shift;
-	if ($XML::XPath::SafeMode) {
-		my $context = $self->get_context;
-		return unless $context;
-		$context->dispose;
-	}
+    my $self = shift;
+    if ($XML::XPath::SafeMode) {
+        my $context = $self->get_context;
+        return unless $context;
+        $context->dispose;
+    }
+}
+
+sub set_namespace {
+    my $self = shift;
+    my ($prefix, $expanded) = @_;
+    $self->{path_parser}->set_namespace($prefix, $expanded);
+}
+
+sub clear_namespaces {
+    my $self = shift;
+    $self->{path_parser}->clear_namespaces();
 }
 
 1;
@@ -201,18 +212,18 @@ this as they support functionality beyond XPath.
 
 =head1 SYNOPSIS
 
-	use XML::XPath;
-	use XML::XPath::XMLParser;
-	
-	my $xp = XML::XPath->new(filename => 'test.xhtml');
-	
-	my $nodeset = $xp->find('/html/body/p'); # find all paragraphs
-	
-	foreach my $node ($nodeset->get_nodelist) {
-		print "FOUND\n\n", 
-			XML::XPath::XMLParser::as_string($node),
-			"\n\n";
-	}
+    use XML::XPath;
+    use XML::XPath::XMLParser;
+    
+    my $xp = XML::XPath->new(filename => 'test.xhtml');
+    
+    my $nodeset = $xp->find('/html/body/p'); # find all paragraphs
+    
+    foreach my $node ($nodeset->get_nodelist) {
+        print "FOUND\n\n", 
+            XML::XPath::XMLParser::as_string($node),
+            "\n\n";
+    }
 
 =head1 DETAILS
 
@@ -245,7 +256,7 @@ The parser option allows you to pass in an already prepared
 XML::Parser object, to save you having to create more than one
 in your application (if, for example, you're doing more than just XPath).
 
-	my $xp = XML::XPath->new( context => $node );
+    my $xp = XML::XPath->new( context => $node );
 
 It is very much recommended that you use only 1 XPath object throughout 
 the life of your application. This is because the object (and it's sub-objects)
@@ -288,6 +299,22 @@ perl value (e.g. using regular expressions).
 =head2 matches($node, $path, [$context])
 
 Returns true if the node matches the path (optionally in context $context).
+
+=head2 set_namespace($prefix, $uri)
+
+Sets the namespace prefix mapping to the uri.
+
+Normally in XML::XPath the prefixes in XPath node tests take their
+context from the current node. This means that foo:bar will always
+match an element <foo:bar> regardless of the namespace that the prefix
+foo is mapped to (which might even change within the document, resulting
+in unexpected results). In order to make prefixes in XPath node tests
+actually map to a real URI, you need to enable that via a call
+to the set_namespace method of your XML::XPath object.
+
+=head2 clear_namespaces()
+
+Clears all previously set namespace mappings.
 
 =head2 $XML::XPath::Namespaces
 
@@ -353,7 +380,7 @@ Full support for this module is available from Fastnet Software Ltd on
 a pay per incident basis. Alternatively subscribe to the Perl-XML
 mailing list by mailing lyris@activestate.com with the text: 
 
-	SUBSCRIBE Perl-XML
+    SUBSCRIBE Perl-XML
 
 in the body of the message. There are lots of friendly people on the
 list, including myself, and we'll be glad to get you started.

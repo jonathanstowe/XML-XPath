@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.27 2000/09/05 13:04:50 matt Exp $
+# $Id: Step.pm,v 1.28 2000/09/25 13:33:11 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
@@ -314,22 +314,37 @@ sub node_test {
     # if node passes test, return true
     
     my $test = $self->{test};
-    
-        return 1 if $test == test_nt_node;
+
+    return 1 if $test == test_nt_node;
         
     if ($test == test_any) {
-            return 1 if $node->isElementNode && defined $node->getName;
+        return 1 if $node->isElementNode && defined $node->getName;
     }
         
-        local $^W;
-        
-        if ($test == test_ncwild) {
-            return unless $node->isElementNode;
-            return 1 if $node->getPrefix eq $self->{literal};
+    local $^W;
+
+    if ($test == test_ncwild) {
+        return unless $node->isElementNode;
+        my $match_ns = $self->{pp}->get_namespace($self->{literal}, $node);
+        if (my $node_nsnode = $node->getNamespace()) {
+            return 1 if $match_ns eq $node_nsnode->getValue;
+        }
     }
     elsif ($test == test_qname) {
-            return unless $node->isElementNode;
+        return unless $node->isElementNode;
+        if ($self->{literal} =~ /:/) {
+            my ($prefix, $name) = split(':', $self->{literal}, 2);
+            my $match_ns = $self->{pp}->get_namespace($prefix, $node);
+            if (my $node_nsnode = $node->getNamespace()) {
+#                warn "match: '$self->{literal}' match NS: '$match_ns' got NS: '", $node_nsnode->getValue, "'\n";
+                return 1 if ($match_ns eq $node_nsnode->getValue) &&
+                        ($name eq $node->getLocalName);
+            }
+        }
+        else {
+#            warn "Node test: ", $node->getName, "\n";
             return 1 if $node->getName eq $self->{literal};
+        }
     }
     elsif ($test == test_nt_text) {
         return 1 if $node->isTextNode;
@@ -341,7 +356,7 @@ sub node_test {
 #         warn "Unreachable code???";
 #         return 1 if $node->isPINode;
 #     }
-        elsif ($test == test_nt_pi) {
+    elsif ($test == test_nt_pi) {
         return unless $node->isPINode;
         if (my $val = $self->{literal}->value) {
             return 1 if $node->getTarget eq $val;
@@ -365,11 +380,24 @@ sub test_attribute {
     
     return 1 if ($test == test_attr_any) || ($test == test_nt_node);
         
-        if ($test == test_attr_ncwild) {
-            return 1 if $node->getPrefix eq $self->{literal};
+    if ($test == test_attr_ncwild) {
+        my $match_ns = $self->{pp}->get_namespace($self->{literal}, $node);
+        if (my $node_nsnode = $node->getNamespace()) {
+            return 1 if $match_ns eq $node_nsnode->getValue;
+        }
     }
     elsif ($test == test_attr_qname) {
+        if ($self->{literal} =~ /:/) {
+            my ($prefix, $name) = split(':', $self->{literal}, 2);
+            my $match_ns = $self->{pp}->get_namespace($prefix, $node);
+            if (my $node_nsnode = $node->getNamespace()) {
+                return 1 if ($match_ns eq $node_nsnode->getValue) &&
+                        ($name eq $node->getLocalName);
+            }
+        }
+        else {
             return 1 if $node->getName eq $self->{literal};
+        }
     }
     
     return; # fallthrough returns false

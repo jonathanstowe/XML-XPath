@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.43 2000/09/10 21:36:31 matt Exp $
+# $Id: XMLParser.pm,v 1.44 2000/09/25 13:33:11 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -84,31 +84,30 @@ sub buildelement {
     }
     
     my $prefix;
-        my (%exp_to_pre, %pre_to_exp);
-        my @namespaces;
+    my (%exp_to_pre, %pre_to_exp);
+    my @namespaces;
 
     if ($_namespaces_on) {
 
-            my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
-            push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
-            my @expanded = map {XML::Parser::Expat::expand_ns_prefix($e, $_)} @prefixes;
-        #    warn "current namespaces: ", join(", ", @expanded), "\n";
+        my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
+        push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
+        my @expanded = map {XML::Parser::Expat::expand_ns_prefix($e, $_)} @prefixes;
+    #    warn "current namespaces: ", join(", ", @expanded), "\n";
 
-            {
-                local $^W;
-                @exp_to_pre{@expanded} = @prefixes;
-                @pre_to_exp{@prefixes} = @expanded;
+        {
+            local $^W;
+            @exp_to_pre{@expanded} = @prefixes;
+            %pre_to_exp = reverse %exp_to_pre;
 
-                $prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
-                $prefix = '' if $prefix eq '#default';
-            }
-
-            while (@prefixes) {
-                my $pre = shift @prefixes;
-                my $newns = XML::XPath::Node::Namespace->new($pre, $pre_to_exp{$pre});
-                push @namespaces, $newns;
-            }
+            $prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag)}; # || '#default'};
+            $prefix = '' if $prefix eq '#default';
         }
+
+        while (my $pre = shift @prefixes) {
+            my $newns = XML::XPath::Node::Namespace->new($pre, $pre_to_exp{$pre});
+            push @namespaces, $newns;
+        }
+    }
 
     my $elname = $tag;    
     $tag = "$prefix:$tag" if $prefix;
@@ -116,8 +115,9 @@ sub buildelement {
     
     while (@$attribs) {
         my ($key, $val) = (shift @$attribs, shift @$attribs);
-        my $namespace = XML::Parser::Expat::namespace($e, $key) || "#default";
+        my $namespace = XML::Parser::Expat::namespace($e, $key);
 #        warn "<$tag> $key 's namespace is '$namespace'\n";
+        local $^W;
         my $prefix = $exp_to_pre{$namespace};
         my $name = $key; $name = "$prefix:$key" if $prefix;
         my $newattr = XML::XPath::Node::Attribute->new($name, $val, $prefix);

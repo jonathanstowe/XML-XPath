@@ -1,4 +1,4 @@
-# $Id: Attribute.pm,v 1.6 2000/08/28 10:06:23 matt Exp $
+# $Id: Attribute.pm,v 1.7 2000/09/25 13:33:15 matt Exp $
 
 package XML::XPath::Node::Attribute;
 
@@ -73,6 +73,15 @@ sub toString {
 					XML::XPath::Node::XMLescape($self->[node_value], '"&><'),
 					'"');
 	return $string;
+}
+
+sub getNamespace {
+    my $self = shift;
+    my ($prefix) = @_;
+    $prefix ||= $self->getPrefix;
+    if (my $parent = $self->getParentNode) {
+        return $parent->getNamespace($prefix);
+    }
 }
 
 1;

@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.10 2000/09/08 14:07:49 matt Exp $
+# $Id: Node.pm,v 1.11 2000/09/25 13:33:11 matt Exp $
 
 package XML::XPath::Node;
 
@@ -131,7 +131,7 @@ my $global_pos = 0;
 
 sub nextPos {
     my $class = shift;
-    return ++$global_pos;
+    return $global_pos += 5;
 }
 
 sub resetPos {
@@ -235,15 +235,6 @@ sub AUTOLOAD {
     goto &$AUTOLOAD;
 }
 
-sub Freeze {
-    warn "Freezing $_[0]\n";
-    UNIVERSAL::Freeze(@_);
-}
-
-sub Thaw {
-    UNIVERSAL::Thaw(@_);
-}
-
 package XML::XPath::NodeImpl;
 
 use vars qw/@ISA $AUTOLOAD/;
@@ -332,6 +323,10 @@ sub getNamespaceNodes {
     return wantarray ? () : [];
 }
 
+sub getNamespace {
+    return;
+}
+
 sub getLocalName {
     return;
 }
@@ -372,17 +367,22 @@ sub renumber {
     
 sub insertAfter {
     my $self = shift;
-    my $posnode = shift;
     my $newnode = shift;
-    
-    my $pos_number = eval {
-        $posnode->findnodes('following::node()')->get_node(1)->get_global_pos();
-    };
+    my $posnode = shift;
+
+    my $pos_number = eval { $posnode->[XML::XPath::Node::node_children][-1]->get_global_pos() + 1; };
     if (!defined $pos_number) {
-        $pos_number = XML::XPath::Node::nextPos();
+        $pos_number = $posnode->get_global_pos() + 1;
     }
     
-    $posnode->renumber('descendant::node() | following::node()', +1);
+    eval {
+        if ($pos_number == 
+                $posnode->findnodes(
+                    'following::node()'
+                    )->get_node(1)->get_global_pos()) {
+            $posnode->renumber('following::node()', +5);
+        }
+    };
     
     my $pos = $posnode->get_pos;
     
@@ -398,12 +398,13 @@ sub insertAfter {
 
 sub insertBefore {
     my $self = shift;
-    my $posnode = shift;
     my $newnode = shift;
+    my $posnode = shift;
     
-    my $pos_number = $posnode->get_global_pos();
-    
-    $posnode->renumber('self::node() | descendant::node() | following::node()', +1);
+    my $pos_number = ($posnode->getPreviousSibling() || $posnode->getParentNode)->get_global_pos();
+    if ($pos_number == $posnode->get_global_pos()) {
+        $posnode->renumber('self::node() | descendant::node() | following::node()', +5);
+    }
     
     my $pos = $posnode->get_pos;
     

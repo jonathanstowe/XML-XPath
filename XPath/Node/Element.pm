@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.8 2000/09/08 14:07:52 matt Exp $
+# $Id: Element.pm,v 1.9 2000/09/25 13:33:15 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -46,7 +46,23 @@ sub appendChild {
         }
         else {
             my $pos_number = $self->get_global_pos() + 1;
-            $self->renumber('following::node()', +1);
+            
+            if (my $brother = $self->getNextSibling()) { # optimisation
+                if ($pos_number == $brother->get_global_pos()) {
+                    $self->renumber('following::node()', +5);
+                }
+            }
+            else {
+                eval {
+                    if ($pos_number == 
+                            $self->findnodes(
+                                'following::node()'
+                                )->get_node(1)->get_global_pos()) {
+                        $self->renumber('following::node()', +5);
+                    }
+                };
+            }
+            
             push @{$self->[node_children]}, $newnode;
             $newnode->setParentNode($self);
             $newnode->set_pos($#{$self->[node_children]});
@@ -192,12 +208,23 @@ sub appendAttribute {
             $node_num = $self->get_global_pos() + 1;
         }
         
+        eval {
+            if (@{$self->[node_children]}) {
+                if ($node_num == $self->[node_children][-1]->get_global_pos()) {
+                    $self->renumber('descendant::node() | following::node()', +5);
+                }
+            }
+            elsif ($node_num == 
+                    $self->findnodes('following::node()')->get_node(1)->get_global_pos()) {
+                $self->renumber('following::node()', +5);
+            }
+        };
+        
         push @{$self->[node_attribs]}, $attribute;
         $attribute->setParentNode($self);
         $attribute->set_pos($#{$self->[node_attribs]});
         $attribute->set_global_pos($node_num);
         
-        $self->renumber('descendant::node() | following::node()', +1);
     }
 }
 
@@ -260,7 +287,7 @@ sub setAttributeNode {
 sub getNamespace {
     my $self = shift;
     my ($prefix) = @_;
-    $prefix ||= $self->getPrefix;
+    $prefix ||= $self->getPrefix || '#default';
     my $namespaces = $self->[node_namespaces];
     return unless $namespaces;
     foreach my $ns (@$namespaces) {
