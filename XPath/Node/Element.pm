@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.5 2000/08/15 13:46:43 matt Exp $
+# $Id: Element.pm,v 1.7 2000/08/28 10:06:23 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -62,7 +62,8 @@ sub removeChild {
         $self->[node_children][$i]->set_pos($i);
     }
     
-    $delnode->DESTROY;
+    $delnode->del_parent_link;
+    
 }
 
 sub appendIdElement {
@@ -77,13 +78,13 @@ sub DESTROY {
 #	warn "DESTROY ELEMENT: ", $self->[node_name], "\n";
 #	$self->[node_parent] = undef;
 	foreach my $kid ($self->getChildNodes) {
-		$kid->del_parent_link;
+		$kid && $kid->del_parent_link;
 	}
 	foreach my $attr ($self->getAttributeNodes) {
-		$attr->del_parent_link;
+		$attr && $attr->del_parent_link;
 	}
 	foreach my $ns ($self->getNamespaceNodes) {
-		$ns->del_parent_link;
+		$ns && $ns->del_parent_link;
 	}
  	$self->[node_children] = undef;
  	$self->[node_attribs] = undef;
@@ -105,11 +106,8 @@ sub getLocalName {
 }
 
 sub getChildNodes {
-	my $self = shift;
-	if ($self->[node_children]) {
-		return wantarray ? @{$self->[node_children]} : $self->[node_children];
-	}
-	return wantarray ? () : [];
+    my $self = shift;
+    return wantarray ? @{$self->[node_children]} : $self->[node_children];
 }
 
 sub getChildNode {
@@ -119,6 +117,18 @@ sub getChildNode {
 		return;
 	}
 	return $self->[node_children][$pos - 1];
+}
+
+sub getFirstChild {
+    my $self = shift;
+    return unless @{$self->[node_children]};
+    return $self->[node_children][0];
+}
+
+sub getLastChild {
+    my $self = shift;
+    return unless @{$self->[node_children]};
+    return $self->[node_children][-1];
 }
 
 sub getAttribute {
@@ -162,7 +172,7 @@ sub removeAttribute {
         $self->[node_attribs][$i]->set_pos($i);
     }
     
-    $attrib->DESTROY;    
+    $attrib->del_parent_link;
 }
 
 sub getNamespace {
@@ -273,29 +283,20 @@ sub toString {
 	my $norecurse = shift;
 	my $string = '';
 	if (! $self->[node_name] ) {
-		# root node
-		foreach my $kid (@{$self->[node_children]}) {
-			$string .= $kid->toString;
-		}
-		return $string;
+            # root node
+            return join('', map { $_->toString($norecurse) } @{$self->[node_children]});
 	}
 	$string .= "<" . $self->[node_name];
 	
-	foreach my $ns (@{$self->[node_namespaces]}) {
-		$string .= $ns->toString;
-	}
+        $string .= join('', map { $_->toString } @{$self->[node_namespaces]});
 	
-	foreach my $attr (@{$self->[node_attribs]}) {
-		$string .= $attr->toString;
-	}
+        $string .= join('', map { $_->toString } @{$self->[node_attribs]});
 	
 	if (@{$self->[node_children]}) {
 		$string .= ">";
 
 		if (!$norecurse) {
-			foreach my $kid (@{$self->[node_children]}) {
-				$string .= $kid->toString($norecurse);
-			}
+                        $string .= join('', map { $_->toString($norecurse) } @{$self->[node_children]});
 		}
 		
 		$string .= "</" . $self->[node_name] . ">";

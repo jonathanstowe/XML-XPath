@@ -49,6 +49,7 @@ t/22name_select.t
 t/23func.t
 t/rdf.t
 t/remove.t
+t/insert.t
 t/stress.t
 examples/test.xml
 examples/xpath

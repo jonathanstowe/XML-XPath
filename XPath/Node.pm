@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.7 2000/08/15 16:17:04 matt Exp $
+# $Id: Node.pm,v 1.9 2000/08/28 10:06:08 matt Exp $
 
 package XML::XPath::Node;
 
@@ -159,8 +159,8 @@ sub XMLescape {
         defined ($2) ? $DecodeDefaultEntity{$2} : "]]&gt;" /egsx;
     }
     else {
-        $str =~ s/([$default])|(]]>)/
-        defined ($1) ? $DecodeDefaultEntity{$1} : "]]&gt;" /egsx;
+        $str =~ s/(["><'&])|(]]>)/
+        defined ($1) ? $DecodeDefaultEntity{$1} : ']]&gt;' /gosex;
     }
 
 #?? could there be references that should not be expanded?
@@ -215,6 +215,8 @@ sub new {
     return bless $self, $class;
 }
 
+sub DESTROY {}
+
 sub AUTOLOAD {
     my $method = $AUTOLOAD;
     $method =~ s/.*:://;
@@ -229,7 +231,7 @@ sub AUTOLOAD {
             }
             croak $@;
         }
-        $obj->$method(@_);
+        $obj && $obj->$method(@_);
     };
     goto &$AUTOLOAD;
 }
@@ -343,6 +345,65 @@ sub get_global_pos {
     return $self->[XML::XPath::Node::node_global_pos];
 }
 
+sub set_global_pos {
+    my $self = shift;
+    $self->[XML::XPath::Node::node_global_pos] = shift;
+}
+
+sub renumber {
+    my $self = shift;
+    my $search = shift;
+    my $diff = shift;
+    
+    foreach my $node ($self->findnodes($search)) {
+        $node->set_global_pos(
+                $node->get_global_pos + $diff
+                );
+    }
+}
+    
+sub insertAfter {
+    my $self = shift;
+    my $posnode = shift;
+    my $newnode = shift;
+    
+    my $pos_number = $posnode->getNextSibling()->get_global_pos();
+    
+    $posnode->renumber('descendant::node() | following::node()', +1);
+    
+    my $pos = $posnode->get_pos;
+    
+    $newnode->setParentNode($self);
+    splice @{$self->[XML::XPath::Node::node_children]}, $pos + 1, 0, $newnode;
+    
+    for (my $i = $pos + 1; $i < @{$self->[XML::XPath::Node::node_children]}; $i++) {
+        $self->[XML::XPath::Node::node_children][$i]->set_pos($i);
+    }
+    
+    $newnode->set_global_pos($pos_number);
+}
+
+sub insertBefore {
+    my $self = shift;
+    my $posnode = shift;
+    my $newnode = shift;
+    
+    my $pos_number = $posnode->get_global_pos();
+    
+    $posnode->renumber('self::node() | descendant::node() | following::node()', +1);
+    
+    my $pos = $posnode->get_pos;
+    
+    $newnode->setParentNode($self);
+    splice @{$self->[XML::XPath::Node::node_children]}, $pos, 0, $newnode;
+    
+    for (my $i = $pos; $i < @{$self->[XML::XPath::Node::node_children]}; $i++) {
+        $self->[XML::XPath::Node::node_children][$i]->set_pos($i);
+    }
+    
+    $newnode->set_global_pos($pos_number);
+}
+
 sub getPreviousSibling {
     my $self = shift;
     my $pos = $self->[XML::XPath::Node::node_pos];
@@ -388,6 +449,20 @@ sub find {
     my ($path) = @_;
     my $xp = XML::XPath->new(); # new is v. lightweight
     return $xp->find($path, $node);
+}
+
+sub findvalue {
+    my $node = shift;
+    my ($path) = @_;
+    my $xp = XML::XPath->new();
+    return $xp->findvalue($path, $node);
+}
+
+sub findnodes {
+    my $node = shift;
+    my ($path) = @_;
+    my $xp = XML::XPath->new();
+    return $xp->findnodes($path, $node);
 }
 
 sub matches {

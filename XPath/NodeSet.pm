@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.12 2000/05/16 16:53:37 matt Exp $
+# $Id: NodeSet.pm,v 1.13 2000/08/24 16:22:58 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;

@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.17 2000/08/15 16:17:04 matt Exp $
+# $Id: Function.pm,v 1.19 2000/08/28 10:06:08 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -189,6 +189,9 @@ sub contains {
     my $self = shift;
     my ($node, @params) = @_;
     die "starts-with: incorrect number of params\n" unless @params == 2;
+    if ($params[0]->isa('XML::XPath::NodeSet')) {
+        die "Cannot do contains() on a NodeSet - convert to string using string() function first";
+    }
     my $value = $params[1]->value;
     if ($params[0]->value =~ /(.*?)\Q$value\E(.*)/) {
         # $1 and $2 stored for substring funcs below

@@ -1,4 +1,4 @@
-# $Id: Attribute.pm,v 1.4 2000/06/09 14:34:53 matt Exp $
+# $Id: Attribute.pm,v 1.6 2000/08/28 10:06:23 matt Exp $
 
 package XML::XPath::Node::Attribute;
 
@@ -62,9 +62,9 @@ sub string_value {
 sub toString {
 	my $self = shift;
 	my $string = ' ';
-	if ($self->[node_prefix]) {
-		$string .= $self->[node_prefix] . ':';
-	}
+# 	if ($self->[node_prefix]) {
+# 		$string .= $self->[node_prefix] . ':';
+# 	}
 	$string .= join('',
 					$self->[node_key],
 					'="',

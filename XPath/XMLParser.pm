@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.37 2000/08/15 16:17:04 matt Exp $
+# $Id: XMLParser.pm,v 1.39 2000/08/28 10:06:09 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -156,10 +156,10 @@ sub parse_char {
 	my $e = shift;
 	my $text = shift;
 	
-	my @kids = $_current->getChildNodes;
-	if (@kids && $kids[-1]->getNodeType == TEXT_NODE) {
+	my $last = $_current->getLastChild;
+	if ($last && $last->isTextNode) {
 		# append to previous text node
-		$kids[-1]->appendText($text);
+		$last->appendText($text);
 		return;
 	}
 	

@@ -1,4 +1,4 @@
-# $Id: Namespace.pm,v 1.3 2000/05/16 16:54:04 matt Exp $
+# $Id: Namespace.pm,v 1.4 2000/08/24 16:23:02 matt Exp $
 
 package XML::XPath::Node::Namespace;
 

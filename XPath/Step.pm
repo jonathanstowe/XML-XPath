@@ -1,9 +1,22 @@
-# $Id: Step.pm,v 1.24 2000/08/18 10:21:52 matt Exp $
+# $Id: Step.pm,v 1.26 2000/08/28 10:06:08 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::Parser;
 use XML::XPath::Node;
 use strict;
+
+sub test_qname () { 0; } # Full name
+sub test_ncwild () { 1; } # NCName:*
+sub test_any () { 2; } # *
+
+sub test_attr_qname () { 3; } # @ns:attrib
+sub test_attr_ncwild () { 4; } # @nc:*
+sub test_attr_any () { 5; } # @*
+
+sub test_nt_comment () { 6; } # comment()
+sub test_nt_text () { 7; } # text()
+sub test_nt_pi () { 8; } # processing-instruction()
+sub test_nt_node () { 9; } # node()
 
 sub new {
 	my $class = shift;
@@ -25,16 +38,27 @@ sub as_string {
 	my $self = shift;
 	my $string = $self->{axis} . "::";
 
-	if ($self->{test} eq 'processing-instruction') {
-		$string .= $self->{test} . "(";
+        my $test = $self->{test};
+        
+	if ($test == test_nt_pi) {
+		$string .= 'processing-instruction(';
 		if ($self->{literal}->value) {
 			$string .= $self->{literal}->as_string;
 		}
 		$string .= ")";
 	}
-	else {
-		$string .= $self->{test};
+	elsif ($test == test_nt_comment) {
+		$string .= 'comment()';
 	}
+        elsif ($test == test_nt_text) {
+            $string .= 'text()';
+        }
+        elsif ($test == test_nt_node) {
+            $string .= 'node()';
+        }
+        else {
+            $string .= $self->{literal};
+        }
 	
 	if (@{$self->{predicates}}) {
 		foreach (@{$self->{predicates}}) {
@@ -136,7 +160,7 @@ sub axis_attribute {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->isElementNode;
+#	return $results unless $context->isElementNode;
 	foreach my $attrib (@{$context->getAttributes}) {
 		if ($self->test_attribute($attrib)) {
 			$results->push($attrib);
@@ -157,16 +181,18 @@ sub axis_child {
 }
 
 sub axis_descendant {
-	my $self = shift;
-	my ($context, $results) = @_;
-	
-	return $results unless $context->isElementNode;
-	foreach my $node (@{$context->getChildNodes}) {
-		if (node_test($self, $node)) {
-			$results->push($node);
-		}
-		axis_descendant($self, $node, $results);
-	}
+    my $self = shift;
+    my ($context, $results) = @_;
+
+    my @stack = $context->getChildNodes;
+
+    while (@stack) {
+        my $node = pop @stack;
+        if (node_test($self, $node)) {
+            $results->push($node);
+        }
+        push @stack, $node->getChildNodes;
+    }
 }
 
 sub axis_descendant_or_self {
@@ -176,7 +202,7 @@ sub axis_descendant_or_self {
 	if (node_test($self, $context)) {
 		$results->push($context);
 	}
-	foreach my $node (@{$context->getChildNodes}) {
+	foreach my $node ($context->getChildNodes) {
 		axis_descendant_or_self($self, $node, $results);
 	}
 }
@@ -273,56 +299,44 @@ sub node_test {
 	my $self = shift;
 	my $node = shift;
 	
-	{
-#		local $^W;
-#		warn "node_test: $self->{test} = " . $node->[node_name] . "\n";
-		1;
-	}
-	
 	# if node passes test, return true
 	
 	my $test = $self->{test};
 	
-        return 1 if $test eq 'node()';
+        return 1 if $test == test_nt_node;
         
-	if ($test eq '*') {
-            return 1 if $node->isElementNode && $node->getParentNode;
+	if ($test == test_any) {
+            return 1 if $node->isElementNode && defined $node->getName;
 	}
-	
-	if ($test =~ /^(text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
-		if ($test eq 'text()') {
-			return 1 if $node->isTextNode;
-		}
-		elsif ($test eq 'comment()') {
-			return 1 if $node->isCommentNode;
-		}
-		elsif ($test eq 'processing-instruction()') {
-			warn "Unreachable code???";
-			return 1 if $node->isPINode;
-		}
-		elsif ($test eq 'processing-instruction') {
-			return unless $node->isPINode;
-			if (my $val = $self->{literal}->value) {
-				return 1 if $node->getTarget eq $val;
-			}
-			else {
-				return 1;
-			}
-		}
-	}
-
-	return unless $node->isElementNode;
-	
+        
         local $^W;
         
-	if ($test =~ /^$XML::XPath::Parser::NCWild$/o) {
-		return 1 if $node->getPrefix eq $1;
+        if ($test == test_ncwild) {
+            return unless $node->isElementNode;
+            return 1 if $node->getPrefix eq $self->{literal};
 	}
-	elsif ($test =~ /^$XML::XPath::Parser::NCName$/o) {
-		return 1 if $node->getLocalName eq $test;
+	elsif ($test == test_qname) {
+            return unless $node->isElementNode;
+            return 1 if $node->getName eq $self->{literal};
 	}
-	elsif ($test =~ /^$XML::XPath::Parser::QName$/o) {
-		return 1 if $node->getName eq $test;
+	elsif ($test == test_nt_text) {
+		return 1 if $node->isTextNode;
+	}
+	elsif ($test == test_nt_comment) {
+		return 1 if $node->isCommentNode;
+	}
+# 	elsif ($test == test_nt_pi && !$self->{literal}) {
+# 		warn "Unreachable code???";
+# 		return 1 if $node->isPINode;
+# 	}
+        elsif ($test == test_nt_pi) {
+	    return unless $node->isPINode;
+	    if (my $val = $self->{literal}->value) {
+		    return 1 if $node->getTarget eq $val;
+	    }
+	    else {
+		    return 1;
+	    }
 	}
 	
 	return; # fallthrough returns false
@@ -337,13 +351,13 @@ sub test_attribute {
 	
 	my $test = $self->{test};
 	
-	return 1 if ($test eq '*') || ($test eq 'node()');
-
-	if ($test =~ /^$XML::XPath::Parser::NCWild$/o) {
-		return 1 if $node->getPrefix eq $1;
+	return 1 if ($test == test_attr_any) || ($test == test_nt_node);
+        
+        if ($test == test_attr_ncwild) {
+            return 1 if $node->getPrefix eq $self->{literal};
 	}
-	elsif ($test =~ /^$XML::XPath::Parser::QName$/o) {
-		return 1 if $node->getName eq $test;
+	elsif ($test == test_attr_qname) {
+            return 1 if $node->getName eq $self->{literal};
 	}
 	
 	return; # fallthrough returns false
@@ -358,12 +372,12 @@ sub test_namespace {
 	
 	my $test = $self->{test};
 	
-	return 1 if $test eq '*'; # True for all nodes of principal type
+	return 1 if $test == test_any; # True for all nodes of principal type
 	
-	if ($test eq 'node()') {
+	if ($test == test_any) {
 		return 1;
 	}
-	elsif ($test eq $node->getExpanded) {
+	elsif ($self->{literal} eq $node->getExpanded) {
 		return 1;
 	}
 	
@@ -381,7 +395,7 @@ sub filter_by_predicate {
 	# proximity position of the node in the node set with respect to
 	# the axis as the context position.
 	
-	if (!$nodeset) {
+	if (!ref($nodeset)) { # use ref because nodeset has a bool context
 		die "No nodeset!!!";
 	}
 	
