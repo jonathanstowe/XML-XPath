@@ -18,7 +18,6 @@ XPath/Root.pm
 XPath/PerlSAX.pm
 XPath/Builder.pm
 t/base.t
-t/example.t
 t/stress.t
 examples/test.xml
 examples/xpath

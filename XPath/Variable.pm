@@ -1,4 +1,4 @@
-# $Id: Variable.pm,v 1.3 2000/01/23 16:26:40 matt Exp $
+# $Id: Variable.pm,v 1.4 2000/04/17 11:14:25 matt Exp $
 
 package XML::XPath::Variable;
 use strict;
@@ -15,7 +15,7 @@ sub new {
 
 sub as_string {
 	my $self = shift;
-	"\$" . $self->{name};
+	'\$' . $self->{name};
 }
 
 sub get_value {
@@ -31,7 +31,8 @@ sub set_value {
 
 sub evaluate {
 	my $self = shift;
-	$self->get_value;
+	my $val = $self->get_value;
+	return $val;
 }
 
 1;

@@ -1,9 +1,12 @@
-# $Id: NodeSet.pm,v 1.5 2000/03/20 14:55:28 matt Exp $
+# $Id: NodeSet.pm,v 1.6 2000/04/17 11:14:25 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
 
 use XML::XPath::Boolean;
+
+use overload 
+		'""' => \&to_literal;
 
 sub new {
 	my $class = shift;
@@ -69,6 +72,13 @@ sub to_literal {
 	my $self = shift;
 	return XML::XPath::Literal->new(
 			join('', map { XML::XPath::XMLParser::string_value($_) } @$self)
+			);
+}
+
+sub to_number {
+	my $self = shift;
+	return XML::XPath::Number->new(
+			$self->to_literal
 			);
 }
 

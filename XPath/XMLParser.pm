@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.26 2000/03/20 14:55:28 matt Exp $
+# $Id: XMLParser.pm,v 1.27 2000/04/17 11:14:25 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -154,6 +154,7 @@ sub buildelement {
 	my $prefix = $exp_to_pre{$e->namespace($tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
 	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
+	$node->[node_prefix] = $prefix;
 	
 	while (@prefixes) {
 		my $pre = shift @prefixes;
@@ -247,7 +248,7 @@ sub mkcomment {
 sub parse_comment {
 	my $e = shift;
 	my ($data) = @_;
-	my $node = mkcomment($data);
+	my $node = mkcomment($_current, $data);
 	push @{$_current->[node_children]}, $node;
 	$node->[node_pos] = $#{$_current->[node_children]};
 }

@@ -11,11 +11,12 @@ my $pp = XML::XPath::Parser->new();
 if ($pp) { print "ok 2\n"; }
 else { print "not ok 2\n"; }
 
+$pp->parse("variable('amount', number(number(./rate/text()) * number(./units_worked/text())))");
+
 my $path = $pp->parse('.//
 		tag/
 		child::*/
 		processing-instruction("Fred")/
-		id(xml/vccc/bbbb/@fer)/
 		self::node()[substr("33", 1, 1)]/
 		attribute::ra[../@gunk] 
 			[(../../@att="va\'l") and (@bert = "geee")]

@@ -13,6 +13,12 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.21
+
+Performance enhancements to expression evalutation
+Complete re-write of the XPath Parser
+Numerous bug fixes
+
 =item 0.20
 
 More bug fixes.
@@ -65,4 +71,4 @@ This is the first public release
 
 =back
 
-$Id: README,v 1.5 2000/03/20 14:54:53 matt Exp $
+$Id: README,v 1.7 2000/04/17 11:31:00 matt Exp $

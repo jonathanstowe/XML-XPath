@@ -1,4 +1,4 @@
-# $Id: Step.pm,v 1.13 2000/02/28 10:40:21 matt Exp $
+# $Id: Step.pm,v 1.16 2000/04/17 11:14:25 matt Exp $
 
 package XML::XPath::Step;
 use XML::XPath::XMLParser;
@@ -90,122 +90,179 @@ sub evaluate_node {
 	
 #	warn "Node: ", $context->[node_name], "\n";
 	
+	my $method = "axis_" . $self->{axis};
+	$method =~ tr/-/_/;
+	
 	my $results = XML::XPath::NodeSet->new();
-	
-	if ($self->{axis} eq 'ancestor') {
-		$self->{pp}->set_direction('reverse');
-		return $results unless $context->[node_parent];
-		if ($self->node_test($context->[node_parent])) {
-			$results->push($context->[node_parent]);
-		}
-		$results->append($self->evaluate_node($context->[node_parent]));
+	eval {
+		$self->$method($context, $results);
+	};
+	if ($@) {
+		die "axis $method not implemented\n";
 	}
-	elsif ($self->{axis} eq 'ancestor-or-self') {
-		$self->{pp}->set_direction('reverse');
-		if ($self->node_test($context)) {
-			$results->push($context);
-		}
-		$results->append($self->evaluate_node($context->[node_parent])) if $context->[node_parent];
-	}
-	elsif ($self->{axis} eq 'attribute') {
-		return $results unless ref($context) eq 'element';
-		foreach my $attrib (@{$context->[node_attribs]}) {
-			if ($self->test_attribute($attrib)) {
-				$results->push($attrib);
-			}
-		}
-	}
-	elsif ($self->{axis} eq 'child') {
-		return $results unless ref($context) eq 'element';
-		foreach my $node (@{$context->[node_children]}) {
-			if ($self->node_test($node)) {
-				$results->push($node);
-			}
-		}
-	}
-	elsif ($self->{axis} eq 'descendant') {
-		return $results unless ref($context) eq 'element';
-		foreach my $node (@{$context->[node_children]}) {
-			if ($self->node_test($node)) {
-				$results->push($node);
-			}
-			$results->append($self->evaluate_node($node));
-		}
-	}
-	elsif ($self->{axis} eq 'descendant-or-self') {
-		if ($self->node_test($context)) {
-			$results->push($context);
-		}
-		foreach my $node (@{$context->[node_children]}) {
-			$results->append($self->evaluate_node($node));
-		}
-	}
-	elsif ($self->{axis} eq 'following') {
-		return $results unless $context->[node_parent];
-		my $i = $context->[node_pos];
-		local $self->{axis} = 'descendant-or-self';
-		for (my $ref = $i + 1; $ref < @{$context->[node_parent]}; $ref++) {
-			$results->push($self->evaluate_node($context->[node_parent]->[node_children]->[$ref]));
-		}
-	}
-	elsif ($self->{axis} eq 'following-sibling') {
-		return $results unless $context->[node_parent];
-		my $i = $context->[node_pos] + 1;
-		while(1) {
-			last unless $context->[node_parent]->[node_children]->[$i];
-			if ($self->node_test($context->[node_parent]->[node_children]->[$i])) {
-				$results->push($context->[node_parent]->[node_children]->[$i]);
-			}
-			$i++;
-		}
-	}
-	elsif ($self->{axis} eq 'namespace') {
-		return $results unless ref($context) eq 'element';
-		foreach my $ns (@{$context->[node_namespaces]}) {
-			if ($self->test_namespace($ns)) {
-				$results->push($ns);
-			}
-		}
-	}
-	elsif ($self->{axis} eq 'parent') {
-		return $results unless $context->[node_parent];
-		if ($self->node_test($context->[node_parent])) {
-			$results->push($context->[node_parent]);
-		}
-	}
-	elsif ($self->{axis} eq 'preceding') {
-		$self->{pp}->set_direction('reverse');
-		# all preceding nodes in document order, except ancestors
-		# (go through each sibling, and get decendant-or-self)
-		local $self->{axis} = 'descendant-or-self';
-		my $i = $context->[node_pos];
-		my $ref = 0;
-		while($context->[node_parent][node_children][$ref] ne $context) {
-			$results->append($self->evaluate_node($context->[node_parent][node_children][$ref]));
-			$ref++;
-		}
-	}
-	elsif ($self->{axis} eq 'preceding-sibling') {
-		$self->{pp}->set_direction('reverse');
-		return $results unless $context->[node_parent];
-		my $i = $context->[node_pos];
-		my $ref = 0;
-		while($context->[node_parent]->[node_children]->[$ref] ne $context) {
-			if ($self->test_node($context->[node_parent]->[node_children]->[$ref])) {
-				$results->push($context->[node_parent]->[node_children]->[$ref]);
-			}
-			$ref++;
-		}
-	}
-	elsif ($self->{axis} eq 'self') {
-		if ($self->node_test($context)) {
-			$results->push($context);
-		}
-	}
-	
 	return $results;
 }
 
+sub axis_ancestor {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	$self->{pp}->set_direction('reverse');
+	return $results unless $context->[node_parent];
+	if ($self->node_test($context->[node_parent])) {
+		$results->push($context->[node_parent]);
+	}
+	$self->axis_ancestor($context->[node_parent], $results);
+}
+
+sub axis_ancestor_or_self {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	$self->{pp}->set_direction('reverse');
+	if ($self->node_test($context)) {
+		$results->push($context);
+	}
+	$self->axis_ancestor_or_self($context->[node_parent], $results) if $context->[node_parent];
+}
+
+sub axis_attribute {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless ref($context) eq 'element';
+	foreach my $attrib (@{$context->[node_attribs]}) {
+		if ($self->test_attribute($attrib)) {
+			$results->push($attrib);
+		}
+	}
+}
+
+sub axis_child {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless ref($context) eq 'element';
+	foreach my $node (@{$context->[node_children]}) {
+		if ($self->node_test($node)) {
+			$results->push($node);
+		}
+	}
+}
+
+sub axis_descendant {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless ref($context) eq 'element';
+	foreach my $node (@{$context->[node_children]}) {
+		if ($self->node_test($node)) {
+			$results->push($node);
+		}
+		$self->axis_descendant($node, $results);
+	}
+}
+
+sub axis_descendant_or_self {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	if ($self->node_test($context)) {
+		$results->push($context);
+	}
+	foreach my $node (@{$context->[node_children]}) {
+		$self->axis_descendant_or_self($node, $results);
+	}
+}
+
+sub axis_following {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless $context->[node_parent];
+	my $i = $context->[node_pos];
+	for (my $ref = $i + 1; $ref < @{$context->[node_parent]}; $ref++) {
+		$self->axis_descendant_or_self($context->[node_parent]->[node_children]->[$ref], $results);
+	}
+}
+
+sub axis_following_sibling {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless $context->[node_parent];
+	my $i = $context->[node_pos] + 1;
+	while(1) {
+		last unless $context->[node_parent]->[node_children]->[$i];
+		if ($self->node_test($context->[node_parent]->[node_children]->[$i])) {
+			$results->push($context->[node_parent]->[node_children]->[$i]);
+		}
+		$i++;
+	}
+}
+
+sub axis_namespace {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless ref($context) eq 'element';
+	foreach my $ns (@{$context->[node_namespaces]}) {
+		if ($self->test_namespace($ns)) {
+			$results->push($ns);
+		}
+	}
+}
+
+sub axis_parent {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	return $results unless $context->[node_parent];
+	if ($self->node_test($context->[node_parent])) {
+		$results->push($context->[node_parent]);
+	}
+}
+
+sub axis_preceding {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	$self->{pp}->set_direction('reverse');
+	# all preceding nodes in document order, except ancestors
+	# (go through each sibling, and get decendant-or-self)
+	my $i = $context->[node_pos];
+	my $ref = 0;
+	while($context->[node_parent][node_children][$ref] ne $context) {
+		$self->axis_descendant_or_self($context->[node_parent][node_children][$ref], $results);
+		$ref++;
+	}
+}
+
+sub axis_preceding_sibling {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	$self->{pp}->set_direction('reverse');
+	return $results unless $context->[node_parent];
+	my $i = $context->[node_pos];
+	my $ref = 0;
+	while($context->[node_parent]->[node_children]->[$ref] ne $context) {
+		if ($self->test_node($context->[node_parent]->[node_children]->[$ref])) {
+			$results->push($context->[node_parent]->[node_children]->[$ref]);
+		}
+		$ref++;
+	}
+}
+
+sub axis_self {
+	my $self = shift;
+	my ($context, $results) = @_;
+	
+	if ($self->node_test($context)) {
+		$results->push($context);
+	}
+}
+	
 sub node_test {
 	my $self = shift;
 	my $node = shift;
@@ -218,12 +275,10 @@ sub node_test {
 	# if node passes test, return true
 
 	return 1 if $self->{test} eq '*'; # True for all nodes of principal type (element)
+	return 1 if $self->{test} eq 'node()';
 
-	if ($self->{test} =~ /^(node\(\)|text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
-		if ($self->{test} eq 'node()') {
-			return 1;
-		}
-		elsif ($self->{test} eq 'text()') {
+	if ($self->{test} =~ /^(text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
+		if ($self->{test} eq 'text()') {
 			return 1 if ref($node) eq 'text';
 		}
 		elsif ($self->{test} eq 'comment()') {

@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.23 2000/03/20 10:50:55 matt Exp $
+# $Id: XPath.pm,v 1.26 2000/04/17 11:28:43 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.20';
+$VERSION = '0.21';
 
 use XML::XPath::XMLParser;
 use XML::XPath::Parser;
@@ -53,8 +53,8 @@ sub find {
 #		warn "CONTEXT:\n", Data::Dumper->Dumpxs([$context], ['context']);
 	}
 	
-	my $parser = XML::XPath::Parser->new();
-	my $parsed_path = $parser->parse($path);
+	$self->{path_parser} ||= XML::XPath::Parser->new();
+	my $parsed_path = $self->{path_parser}->parse($path);
 	
 #	warn "\n\nPATH: ", $parsed_path->as_string, "\n\n";
 	
@@ -105,7 +105,7 @@ XML::XPath - a set of modules for parsing and evaluating XPath statements
 =head1 DESCRIPTION
 
 This module aims to comply exactly to the XPath specification at
-http://www.w3.org/TR/??? and yet allow extensions to be added in the
+http://www.w3.org/TR/xpath and yet allow extensions to be added in the
 form of functions. Modules such as XSLT and XPointer may need to do
 this as they support functionality beyond XPath.
 
@@ -133,21 +133,6 @@ and parts herein are named to be synonimous with the names in the
 specification, so consult that if you don't understand why I'm doing
 something in the code.
 
-First off - some buggettes. There is no precedence support yet. That
-means if you have an expression "a and b or c | d" the parser will
-simply scan if from left to right and give you 
-"(a and (b or (c | (d))))". Yes I know that's annoying - its what you
-get when you build your own parser instead of expecting you to install
-Parse::Yapp and lots of other modules just to support this one. If you
-want precedence then use brackets. They work fine. Secondly some functions
-don't quite fully operate the way the spec says they should - this is
-just because of a lack of tuits on my part and will change eventually.
-
-If you need support for this, see the bottom of this text. I have lots
-of suggestions for caching, speeding things up, and running on a live
-server. But they're not going to come for free. I already put a lot
-of effort into this, so stump up the consultancy fee if you need it.
-
 =head1 API
 
 The API of XML::XPath itself is extremely simple to allow you to get
@@ -171,12 +156,20 @@ XML::Parser object, to save you having to create more than one
 in your application (if, for example, you're doing more than just XPath).
 
 	my $xp = XML::XPath->new( context => $node );
+
+It is very much recommended that you use only 1 XPath object throughout 
+the life of your application. This is because the object (and it's sub-objects)
+maintain certain bits of state information that will be useful (such
+as XPath variables) to later calls to find(). It's also a good idea because
+you'll use less memory this way.
 	
 =head2 I<nodeset> = find($path, [$context])
 
-The find function takes an XPath expression (a string) and returns an
+The find function takes an XPath expression (a string) and returns either an
 XML::XPath::NodeSet object containing the nodes it found (or empty if
-no nodes matched the path). It should always return something - if you
+no nodes matched the path), or one of XML::XPath::Literal (a string),
+XML::XPath::Number, or XML::XPath::Boolean. It should always return 
+something - and you can use ->isa() to find out what it returned. If you
 need to check how many nodes it found you should check $nodeset->size.
 See L<XML::XPath::NodeSet>. An optional second parameter of a context
 node allows you to use this method repeatedly, for example XSLT needs
