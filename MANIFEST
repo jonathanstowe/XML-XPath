@@ -47,6 +47,7 @@ t/20axisa_or_s.t
 t/21allnodes.t
 t/22name_select.t
 t/23func.t
+t/24namespaces.t
 t/rdf.t
 t/remove.t
 t/insert.t

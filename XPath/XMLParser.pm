@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.44 2000/09/25 13:33:11 matt Exp $
+# $Id: XMLParser.pm,v 1.45 2000/10/02 08:27:23 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -119,7 +119,7 @@ sub buildelement {
 #        warn "<$tag> $key 's namespace is '$namespace'\n";
         local $^W;
         my $prefix = $exp_to_pre{$namespace};
-        my $name = $key; $name = "$prefix:$key" if $prefix;
+        my $name = $key; $name = "$prefix:$key" if $prefix && $prefix ne '#default';
         my $newattr = XML::XPath::Node::Attribute->new($name, $val, $prefix);
         $node->appendAttribute($newattr, 1);
         if (exists($IdNames{$elname}) && ($IdNames{$elname} eq $key)) {

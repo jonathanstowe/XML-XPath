@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.39 2000/09/25 13:35:46 matt Exp $
+# $Id: XPath.pm,v 1.40 2000/10/02 08:27:13 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '1.01';
+$VERSION = '1.02';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;

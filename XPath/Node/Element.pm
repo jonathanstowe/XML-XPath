@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.9 2000/09/25 13:33:15 matt Exp $
+# $Id: Element.pm,v 1.10 2000/10/02 08:22:36 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -42,7 +42,7 @@ sub appendChild {
     }
     else {
         if (@{$self->[node_children]}) {
-            $self->insertAfter($self->[node_children][-1], $newnode);
+            $self->insertAfter($newnode, $self->[node_children][-1]);
         }
         else {
             my $pos_number = $self->get_global_pos() + 1;
