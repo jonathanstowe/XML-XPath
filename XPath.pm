@@ -5,7 +5,7 @@ package XML::XPath;
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.13';
+$VERSION = '0.14';
 
 use XML::XPath::XMLParser;
 use XML::XPath::Parser;
@@ -50,7 +50,7 @@ sub find {
 				);
 		$context = $parser->parse;
 		$self->set_context($context);
-#		warn "CONTEXT:\n", Data::Dumper->Dump([$context], ['context']);
+#		warn "CONTEXT:\n", Data::Dumper->Dumpxs([$context], ['context']);
 	}
 	
 	my $parser = XML::XPath::Parser->new();

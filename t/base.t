@@ -35,7 +35,7 @@ if ($path->as_string eq q^(self::node()/descendant-or-self::node()/child::tag/ch
 }
 else { print "not ok 4\n"; }
 
-my $nodes = $p->find('//wednesday');
+my $nodes = $p->find('/timesheet//wednesday');
 
 # warn "$nodes size: ", $nodes->size, "\n";
 

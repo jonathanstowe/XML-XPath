@@ -1,4 +1,4 @@
-# $Id: XMLParser.pm,v 1.18 2000/02/19 13:49:05 matt Exp $
+# $Id: XMLParser.pm,v 1.20 2000/02/24 19:00:27 matt Exp $
 
 package XML::XPath::XMLParser;
 
@@ -68,6 +68,8 @@ my @options = qw(
 		ioref
 		);
 
+my ($_current, $_last, $_namespaces_on);
+
 sub new {
 	my $proto = shift;
 	my $class = ref($proto) || $proto;
@@ -110,7 +112,21 @@ sub parsefile {
 sub mkelement {
 	my ($e, $current, $tag, $attribs) = @_;
 	
-	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
+#	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
+	
+	my @node;
+	$node[node_type] = 'element';
+#	$node[node_type] = 0;
+	$node[node_parent] = $current;
+	$node[node_name] = $tag;
+#	$node[node_attribs] = [];
+#	$node[node_namespaces] = [];
+
+	if (!$_namespaces_on && $e->namespace($tag)) {
+		$_namespaces_on = 1;
+	}
+	
+	goto SKIP_NS unless $_namespaces_on;
 	
 	my @prefixes = $e->current_ns_prefixes();
 	push @prefixes, '#default' unless grep /^\#default$/, @prefixes;
@@ -121,104 +137,120 @@ sub mkelement {
 	@exp_to_pre{@expanded} = @prefixes;
 	@pre_to_exp{@prefixes} = @expanded;
 	
-	my $node;
-	$node->[node_type] = 'element';
-	$node->[node_parent] = $current;
 	my $prefix = $exp_to_pre{$e->namespace($tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
-	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
-	$node->[node_attribs] = [];
-
-	while (@$attribs) {
-		my ($key, $val) = (shift @$attribs, shift @$attribs);
-		my $namespace = $e->namespace($key) || "#default";
-		my $newattr;
-		$newattr->[node_type] = 'attribute';
-		$newattr->[node_parent] = $node;
-		$newattr->[node_pos] = $#{$node->[node_attribs]};
-		$newattr->[node_key] = $key;
-		$newattr->[node_value] = $val;
-		$newattr->[node_prefix] = $exp_to_pre{$namespace};
-		push @{$node->[node_attribs]}, $newattr;
-	}
-
-	$node->[node_namespaces] = [];
+	$node[node_name] = $prefix ? "$prefix:$tag" : $tag;
 	
 	while (@prefixes) {
 		my $pre = shift @prefixes;
-		my $newns;
-		$newns->[node_type] = 'namespace';
-		$newns->[node_parent] = $node;
-		$newns->[node_pos] = $#{$node->[node_namespaces]};
-		$newns->[node_prefix] = $pre;
-		$newns->[node_expanded] = $pre_to_exp{$pre};
-		push @{$node->[node_namespaces]}, $newns;
+		my @newns;
+		$newns[node_type] = 'namespace';
+		$newns[node_parent] = \@node;
+		$newns[node_prefix] = $pre;
+		$newns[node_expanded] = $pre_to_exp{$pre};
+		push @{$node[node_namespaces]}, \@newns;
+		$newns[node_pos] = $#{$node[node_namespaces]};
 	}
 	
-	$node->[node_children] = [];
+SKIP_NS:
 	
-	return $node;
+	while (@$attribs) {
+		my ($key, $val) = (shift @$attribs, shift @$attribs);
+		my $namespace = $e->namespace($key) || "#default";
+		my @newattr;
+		$newattr[node_type] = 'attribute';
+		$newattr[node_parent] = \@node;
+		$newattr[node_key] = $key;
+		$newattr[node_value] = $val;
+		$newattr[node_prefix] = $exp_to_pre{$namespace};
+		push @{$node[node_attribs]}, \@newattr;
+		$newattr[node_pos] = $#{$node[node_attribs]};
+	}
+
+	$node[node_children] = [];
+
+	return \@node;
 }
 
 sub parse_init {
 	my $e = shift;
+	undef $_current;
+	undef $_last;
+	$_namespaces_on = 0;
 }
 
 sub parse_char {
 	my $e = shift;
 	my $text = shift;
-	my $node;
-	$node->[node_type] = 'text';
-	$node->[node_parent] = $e->{Current};
-	$node->[node_text] = $text;
-	push @{$e->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$e->{Current}->[node_children]};
+	
+	if (@{$_current->[node_children]} > 0 && $_current->[node_children][-1][node_type] eq 'text') {
+		$_current->[node_children][-1][node_text] .= $text;
+		return;
+	}
+	
+	my @node;
+	$node[node_type] = 'text';
+#	$node[node_type] = 1;
+	$node[node_parent] = $_current;
+	$node[node_text] = $text;
+	push @{$_current->[node_children]}, \@node;
+	$node[node_pos] = $#{$_current->[node_children]};
 }
 
 sub parse_start {
 	my $e = shift;
 	my $tag = shift;
-	my $node = mkelement($e, $e->{Current}, $tag, \@_);
-	push @{$e->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$e->{Current}->[node_children]};
-	$e->{Current} = $node;
+	my $node = mkelement($e, $_current, $tag, \@_);
+	push @{$_current->[node_children]}, $node;
+	$node->[node_pos] = $#{$_current->[node_children]};
+	$_current = $node;
 }
 
 sub parse_end {
 	my $e = shift;
-	$e->{Current} = $e->{Current}->[node_parent] if $e->{Current}->[node_parent];
+	$_last = $_current;
+	$_current = $_current->[node_parent];
 }
 
 sub parse_final {
 	my $e = shift;
-	my $root;
-	$root->[node_type] = 'element';
-	$root->[node_children] = [$e->{Current}];
-	$e->{Current}->[node_parent] = $root;
-	return $root;
+	
+#	warn "real root node: ", $_last->[node_type] , ', ', $_last->[node_name], "\n";
+	
+	my @root;
+	$root[node_type] = 'element';
+#	$root[node_type] = 0;
+	$root[node_children] = [$_last];
+	$_last->[node_parent] = \@root;
+	# Make sure we have no circular refs hanging around
+	undef $_current;
+	undef $_last;
+	return \@root;
 }
 
 sub parse_pi {
 	my $e = shift;
 	my ($target, $data) = @_;
-	my $node;
-	$node->[node_parent] = $e->{Current};
-	$node->[node_type] = 'pi';
-	$node->[node_target] = $target;
-	$node->[node_data] = $data;
-	push @{$e->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$e->{Current}->[node_children]};
+	my @node;
+	$node[node_parent] = $_current;
+	$node[node_type] = 'pi';
+#	$node[node_type] = 3;
+	$node[node_target] = $target;
+	$node[node_data] = $data;
+	push @{$_current->[node_children]}, \@node;
+	$node[node_pos] = $#{$_current->[node_children]};
 }
 
 sub parse_comment {
 	my $e = shift;
 	my ($data) = @_;
-	my $node;
-	$node->[node_parent] = $e->{Current};
-	$node->[node_type] = 'comment';
-	$node->[node_comment] = $data;
-	push @{$e->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$e->{Current}->[node_children]};
+	my @node;
+	$node[node_parent] = $_current;
+	$node[node_type] = 'comment';
+#	$node[node_type] = 2;
+	$node[node_comment] = $data;
+	push @{$_current->[node_children]}, \@node;
+	$node[node_pos] = $#{$_current->[node_children]};
 }
 
 sub as_string {
@@ -253,7 +285,7 @@ sub as_string {
 		$string .= "<?" . $node->[node_target] . " " . XML::Parser::Expat->xml_escape($node->[node_data]) . "?>";
 	}
 	elsif ($node->[node_type] eq 'namespace') {
-		return unless defined $node->[node_expanded];
+		return '' unless defined $node->[node_expanded];
 		if ($node->[node_prefix] eq '#default') {
 			$string .= ' xmlns="';
 		}
@@ -323,6 +355,12 @@ sub _element_string_value {
 	return $string;
 }
 
+sub get_parser { shift->{_parser}; }
+sub get_filename { shift->{_filename}; }
+sub get_xml { shift->{_xml}; }
+sub get_ioref { shift->{_ioref}; }
+
+=pod
 sub AUTOLOAD {
 	my $self = shift;
 	no strict 'refs';
@@ -348,6 +386,7 @@ sub AUTOLOAD {
 	}
 	die "No such method $AUTOLOAD";
 }
+=cut
 
 1;
 

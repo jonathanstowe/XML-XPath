@@ -88,6 +88,8 @@ sub evaluate_node {
 	
 #	warn "Evaluate node: $self->{axis}\n";
 	
+#	warn "Node: ", $context->[node_name], "\n";
+	
 	my $results = XML::XPath::NodeSet->new();
 	
 	if ($self->{axis} eq 'ancestor') {
@@ -208,7 +210,10 @@ sub node_test {
 	my $self = shift;
 	my $node = shift;
 	
-#	warn "node_test: $self->{test}\n";
+	{
+		local $^W;
+#		warn "node_test: $self->{test} = " . $node->[node_name] . "\n";
+	}
 	
 	# if node passes test, return true
 

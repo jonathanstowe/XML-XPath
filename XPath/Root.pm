@@ -19,6 +19,8 @@ sub evaluate {
 	my $self = shift;
 	my $nodeset = shift;
 	
+#	warn "Eval ROOT\n";
+	
 	# must only ever occur on 1 node
 	die "Can't go to root on > 1 node!" unless $nodeset->size == 1;
 	

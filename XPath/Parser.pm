@@ -101,6 +101,8 @@ sub parse {
 	my $tokens = $self->tokenize($path);
 	my $tree = $self->analyze($tokens);
 	
+#	warn "PARSED Expr to\n", $tree->as_string, "\n";
+	
 	return $tree;
 }
 
