@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.32 2001/02/26 14:58:17 matt Exp $
+# $Id: Parser.pm,v 1.33 2001/11/26 17:41:18 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -201,7 +201,8 @@ sub match {
     my ($self, $tokens, $match, $fatal) = @_;
     
     $self->{_curr_match} = '';
-    
+    return 0 unless $self->{_tokpos} < @$tokens;
+
     local $^W;
     
 #    debug ("match: $match\n");
