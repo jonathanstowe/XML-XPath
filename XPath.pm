@@ -1,17 +1,18 @@
-# $Id: XPath.pm,v 1.50 2001/06/12 20:57:11 matt Exp $
+# $Id: XPath.pm,v 1.52 2001/11/05 19:57:30 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '1.10';
+$VERSION = '1.11';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
 
 use XML::XPath::XMLParser;
 use XML::XPath::Parser;
+use IO::File;
 
 # For testing
 #use Data::Dumper;
@@ -29,7 +30,25 @@ my @options = qw(
 sub new {
     my $proto = shift;
     my $class = ref($proto) || $proto;
-    my %args = @_;
+
+    my(%args);
+    # Try to figure out what the user passed
+    if ($#_ == 0) { # passed a scalar
+        my $string = $_[0];
+        if ($string =~ m{<.*?>}s) { # it's an XML string
+            $args{'xml'} = $string;
+        } elsif (ref($string)) {    # read XML from file handle
+            $args{'ioref'} = $string;
+        } elsif ($string eq '-') {  # read XML from stdin
+            $args{'ioref'} = IO::File->new($string);
+        } else {                    # read XML from a file
+            $args{'filename'} = $string;
+        }
+    } else {        # passed a hash or hash reference
+        # just pass the parameters on to the XPath constructor
+        %args = ((ref($_[0]) eq "HASH") ? %{$_[0]} : @_);
+    }
+
     if ($args{filename} && (!-e $args{filename} || !-r $args{filename})) {
         die "Cannot open file '$args{filename}'";
     }
@@ -131,6 +150,126 @@ sub findvalue {
     }
     
     return $results;
+}
+
+sub exists
+{
+    my $self = shift;
+    my ($path, $context) = shift;
+    $path = '/' if (!defined $path);
+    my @nodeset = $self->findnodes($path, $context);
+    return 1 if (scalar( @nodeset ));
+    return 0;
+}
+
+sub getNodeAsXML {
+  my $self = shift;
+  my $node_path = shift;
+  $node_path = '/' if (!defined $node_path);
+  if (ref($node_path)) {
+    return $node_path->as_string();
+  } else {
+    return $self->findnodes_as_string($node_path);
+  }
+}
+
+sub getNodeText {
+  my $self = shift;
+  my $node_path = shift;
+  if (ref($node_path)) {
+    return $node_path->string_value();
+  } else {
+    return $self->findvalue($node_path);
+  }
+}
+
+sub setNodeText {
+  my $self = shift;
+  my($node_path, $new_text) = @_;
+  my $nodeset = $self->findnodes($node_path);
+  return undef if (!defined $nodeset); # could not find node
+  my @nodes = $nodeset->get_nodelist;
+  if ($#nodes < 0) {
+    if ($node_path =~ m|/@([^/]+)$|) {
+      # attribute not found, so try to create it
+      my $parent_path = $`;
+      my $attr = $1;
+      $nodeset = $self->findnodes($parent_path);
+      return undef if (!defined $nodeset); # could not find node
+      foreach my $node ($nodeset->get_nodelist) {
+        my $newnode = XML::XPath::Node::Attribute->new($attr, $new_text);
+        return undef if (!defined $newnode); # could not create new node
+        $node->appendAttribute($newnode);
+      }
+    } else {
+      return undef; # could not find node
+    }
+  }
+  foreach my $node (@nodes) {
+    if ($node->getNodeType == XML::XPath::Node::ATTRIBUTE_NODE) {
+      $node->setNodeValue($new_text);
+    } else {
+      foreach my $delnode ($node->getChildNodes()) {
+        $node->removeChild($delnode);
+      }
+      my $newnode = XML::XPath::Node::Text->new($new_text);
+      return undef if (!defined $newnode); # could not create new node
+      $node->appendChild($newnode);
+    }
+  }
+  return 1;
+}
+
+sub createNode {
+  my $self = shift;
+  my($node_path) = @_;
+  my $path_steps = $self->{path_parser}->parse($node_path);
+  my @path_steps = ();
+  foreach my $step (@{$path_steps->get_lhs()}) {
+    my $string = $step->as_string();
+    push(@path_steps, $string) if (defined $string && $string ne "");
+  }
+  my $prev_node = undef;
+  my $nodeset = undef;
+  my $nodes = undef;
+  my $p = undef;
+  my $test_path = "";
+  # Start with the deepest node, working up the path (right to left),
+  # trying to find a node that exists.
+  for ($p = $#path_steps; $p >= 0; $p--) {
+    my $path = $path_steps[$p];
+    $test_path = "(/" . join("/", @path_steps[0..$p]) . ")";
+    $nodeset = $self->findnodes($test_path);
+    return undef if (!defined $nodeset); # error looking for node
+    $nodes = $nodeset->size;
+    return undef if ($nodes > 1); # too many paths - path not specific enough
+    if ($nodes == 1) { # found a node -- need to create nodes below it
+      $prev_node = $nodeset->get_node(1);
+      last;
+    }
+  }
+  if (!defined $prev_node) {
+    my @root_nodes = $self->findnodes('/')->get_nodelist();
+    $prev_node = $root_nodes[0];
+  }
+  # We found a node that exists, or we'll start at the root.
+  # Create all lower nodes working left to right along the path.
+  for ($p++ ; $p <= $#path_steps; $p++) {
+    my $path = $path_steps[$p];
+    my $newnode = undef;
+    my($axis,$name) = ($path =~ /^(.*?)::(.*)$/);
+    if ($axis =~ /^child$/i) {
+      $newnode = XML::XPath::Node::Element->new($name);
+      return undef if (!defined $newnode); # could not create new node
+      $prev_node->appendChild($newnode);
+    } elsif ($axis =~ /^attribute$/i) {
+      $newnode = XML::XPath::Node::Attribute->new($name, "");
+      return undef if (!defined $newnode); # could not create new node
+      $prev_node->appendAttribute($newnode);
+    }
+    $prev_node = $newnode;
+  }
+  return $prev_node;
 }
 
 sub get_filename {
@@ -303,9 +442,30 @@ for each of the objects stringification is overloaded, so you can just
 print the value found, or manipulate it in the ways you would a normal
 perl value (e.g. using regular expressions).
 
+=head2 exists($path, [$context])
+
+Returns true if the given path exists.
+
 =head2 matches($node, $path, [$context])
 
 Returns true if the node matches the path (optionally in context $context).
+
+=head2 getNodeText($path)
+
+Returns the text string for a particular XML node.  Returns a string,
+or undef if the node doesn't exist.
+
+=head2 setNodeText($path, $text)
+
+Sets the text string for a particular XML node.  The node can be an
+element or an attribute.  If the node to be set is an attribute, and
+the attribute node does not exist, it will be created automatically.
+
+=head2 createNode($path)
+
+Creates the node matching the path given.  If part of the path given, or
+all of the path do not exist, the necessary nodes will be created
+automatically.
 
 =head2 set_namespace($prefix, $uri)
 

@@ -1,4 +1,4 @@
-# $Id: Attribute.pm,v 1.8 2000/11/29 17:22:24 matt Exp $
+# $Id: Attribute.pm,v 1.9 2001/11/05 19:57:47 matt Exp $
 
 package XML::XPath::Node::Attribute;
 
@@ -108,13 +108,25 @@ Create a new attribute node.
 
 Returns the key for the attribute
 
-=head2 getValue / getData
+=head2 getLocalName
+
+As getName above, but without namespace information
+
+=head2 getNodeValue / getData
 
 Returns the value
+
+=head2 setNodeValue
+
+Sets the value of the attribute node.
 
 =head2 getPrefix
 
 Returns the prefix
+
+=head2 getNamespace
+
+Return the namespace.
 
 =head2 toString
 
