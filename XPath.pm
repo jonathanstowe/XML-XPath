@@ -5,7 +5,7 @@ package XML::XPath;
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.99';
+$VERSION = '1.00';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -58,13 +58,21 @@ sub find {
 	
 	$self->{path_parser} ||= XML::XPath::Parser->new();
 	my $parsed_path = $self->{path_parser}->parse($path);
-	
 #	warn "\n\nPATH: ", $parsed_path->as_string, "\n\n";
 	
 #	warn "evaluating path\n";
 	return $parsed_path->evaluate($context);
 }
 
+# sub memsize {
+#     print STDERR @_, "\t";
+#     open(FH, '/proc/self/status');
+#     while(<FH>) {
+#         print STDERR $_ if /^VmSize/;
+#     }
+#     close FH;
+# }
+# 
 sub findnodes {
 	my $self = shift;
 	my ($path, $context) = @_;

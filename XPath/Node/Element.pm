@@ -1,4 +1,4 @@
-# $Id: Element.pm,v 1.7 2000/08/28 10:06:23 matt Exp $
+# $Id: Element.pm,v 1.8 2000/09/08 14:07:52 matt Exp $
 
 package XML::XPath::Node::Element;
 
@@ -14,17 +14,17 @@ use vars qw/@ISA/;
 use XML::XPath::Node ':node_keys';
 
 sub new {
-	my $class = shift;
-	my ($tag, $prefix) = @_;
+    my $class = shift;
+    my ($tag, $prefix) = @_;
         
         my $pos = XML::XPath::Node->nextPos;
-	
+    
         my @vals;
-        @vals[node_global_pos, node_prefix, node_children, node_name] =
-                ($pos, $prefix, [], $tag);
+        @vals[node_global_pos, node_prefix, node_children, node_name, node_attribs] =
+                ($pos, $prefix, [], $tag, []);
         
-	my $self = \@vals;
-	bless $self, $class;
+    my $self = \@vals;
+    bless $self, $class;
 }
 
 sub getNodeType { ELEMENT_NODE }
@@ -32,12 +32,27 @@ sub getNodeType { ELEMENT_NODE }
 sub isElementNode { 1; }
 
 sub appendChild {
-	my $self = shift;
-	my $newnode = shift;
-#	warn "AppendChild $newnode to $self\n";
-	push @{$self->[node_children]}, $newnode;
-	$newnode->setParentNode($self);
-	$newnode->set_pos($#{$self->[node_children]});
+    my $self = shift;
+    my $newnode = shift;
+    if (shift) { # called from internal to XML::XPath
+#    warn "AppendChild $newnode to $self\n";
+        push @{$self->[node_children]}, $newnode;
+        $newnode->setParentNode($self);
+        $newnode->set_pos($#{$self->[node_children]});
+    }
+    else {
+        if (@{$self->[node_children]}) {
+            $self->insertAfter($self->[node_children][-1], $newnode);
+        }
+        else {
+            my $pos_number = $self->get_global_pos() + 1;
+            $self->renumber('following::node()', +1);
+            push @{$self->[node_children]}, $newnode;
+            $newnode->setParentNode($self);
+            $newnode->set_pos($#{$self->[node_children]});
+            $newnode->set_global_pos($pos_number);
+        }
+    }
 }
 
 sub removeChild {
@@ -67,42 +82,45 @@ sub removeChild {
 }
 
 sub appendIdElement {
-	my $self = shift;
-	my ($val, $element) = @_;
-#	warn "Adding '$val' to ID hash\n";
-	$self->[node_ids]{$val} = $element;
+    my $self = shift;
+    my ($val, $element) = @_;
+#    warn "Adding '$val' to ID hash\n";
+    $self->[node_ids]{$val} = $element;
 }
 
 sub DESTROY {
-	my $self = shift;
-#	warn "DESTROY ELEMENT: ", $self->[node_name], "\n";
-#	$self->[node_parent] = undef;
-	foreach my $kid ($self->getChildNodes) {
-		$kid && $kid->del_parent_link;
-	}
-	foreach my $attr ($self->getAttributeNodes) {
-		$attr && $attr->del_parent_link;
-	}
-	foreach my $ns ($self->getNamespaceNodes) {
-		$ns && $ns->del_parent_link;
-	}
- 	$self->[node_children] = undef;
- 	$self->[node_attribs] = undef;
- 	$self->[node_namespaces] = undef;
+    my $self = shift;
+#    warn "DESTROY ELEMENT: ", $self->[node_name], "\n";
+#    warn "DESTROY ROOT\n" unless $self->[node_name];
+    
+    foreach my $kid ($self->getChildNodes) {
+        $kid && $kid->del_parent_link;
+    }
+    foreach my $attr ($self->getAttributeNodes) {
+        $attr && $attr->del_parent_link;
+    }
+    foreach my $ns ($self->getNamespaceNodes) {
+        $ns && $ns->del_parent_link;
+    }
+#     $self->[node_children] = undef;
+#     $self->[node_attribs] = undef;
+#     $self->[node_namespaces] = undef;
 }
 
 sub getName {
-	my $self = shift;
-	$self->[node_name];
+    my $self = shift;
+    $self->[node_name];
 }
 
-*getTagName = \&getName;
+sub getTagName {
+    shift->getName(@_);
+}
 
 sub getLocalName {
-	my $self = shift;
-	my $local = $self->[node_name];
-	$local =~ s/.*://;
-	return $local;
+    my $self = shift;
+    my $local = $self->[node_name];
+    $local =~ s/.*://;
+    return $local;
 }
 
 sub getChildNodes {
@@ -111,12 +129,12 @@ sub getChildNodes {
 }
 
 sub getChildNode {
-	my $self = shift;
-	my ($pos) = @_;
-	if ($pos < 1 || $pos > @{$self->[node_children]}) {
-		return;
-	}
-	return $self->[node_children][$pos - 1];
+    my $self = shift;
+    my ($pos) = @_;
+    if ($pos < 1 || $pos > @{$self->[node_children]}) {
+        return;
+    }
+    return $self->[node_children][$pos - 1];
 }
 
 sub getFirstChild {
@@ -131,29 +149,56 @@ sub getLastChild {
     return $self->[node_children][-1];
 }
 
+sub getAttributeNode {
+    my $self = shift;
+    my ($name) = @_;
+    my $attribs = $self->[node_attribs];
+    foreach my $attr (@$attribs) {
+        return $attr if $attr->getName eq $name;
+    }
+}
+
 sub getAttribute {
-	my $self = shift;
-	my ($name) = @_;
-	my $attribs = $self->[node_attribs];
-	foreach my $attr (@$attribs) {
-		return $attr if $attr->getName eq $name;
-	}
+    my $self = shift;
+    my $attr = $self->getAttributeNode(@_);
+    if ($attr) {
+        return $attr->getValue;
+    }
 }
 
 sub getAttributes {
-	my $self = shift;
-	if ($self->[node_attribs]) {
-		return wantarray ? @{$self->[node_attribs]} : $self->[node_attribs];
-	}
-	return wantarray ? () : [];
+    my $self = shift;
+    if ($self->[node_attribs]) {
+        return wantarray ? @{$self->[node_attribs]} : $self->[node_attribs];
+    }
+    return wantarray ? () : [];
 }
 
 sub appendAttribute {
-	my $self = shift;
-	my ($attribute) = @_;
-	push @{$self->[node_attribs]}, $attribute;
-	$attribute->setParentNode($self);
-	$attribute->set_pos($#{$self->[node_attribs]});
+    my $self = shift;
+    my $attribute = shift;
+    
+    if (shift) { # internal call
+        push @{$self->[node_attribs]}, $attribute;
+        $attribute->setParentNode($self);
+        $attribute->set_pos($#{$self->[node_attribs]});
+    }
+    else {
+        my $node_num;
+        if (@{$self->[node_attribs]}) {
+            $node_num = $self->[node_attribs][-1]->get_global_pos() + 1;
+        }
+        else {
+            $node_num = $self->get_global_pos() + 1;
+        }
+        
+        push @{$self->[node_attribs]}, $attribute;
+        $attribute->setParentNode($self);
+        $attribute->set_pos($#{$self->[node_attribs]});
+        $attribute->set_global_pos($node_num);
+        
+        $self->renumber('descendant::node() | following::node()', +1);
+    }
 }
 
 sub removeAttribute {
@@ -161,7 +206,7 @@ sub removeAttribute {
     my $attrib = shift;
     
     if (!ref($attrib)) {
-        $attrib = $self->getAttribute($attrib);
+        $attrib = $self->getAttributeNode($attrib);
     }
     
     my $pos = $attrib->get_pos;
@@ -175,137 +220,174 @@ sub removeAttribute {
     $attrib->del_parent_link;
 }
 
+sub setAttribute {
+    my $self = shift;
+    my ($name, $value) = @_;
+    
+    if (my $attrib = $self->getAttributeNode($name)) {
+        $attrib->setNodeValue($value);
+        return $attrib;
+    }
+    
+    my ($nsprefix) = ($name =~ /^($XML::XPath::Parser::NCName):($XML::XPath::Parser::NCName)$/o);
+    
+    if ($nsprefix && !$self->getNamespace($nsprefix)) {
+        die "No namespace matches prefix: $nsprefix";
+    }
+    
+    my $newnode = XML::XPath::Node::Attribute->new($name, $value, $nsprefix);
+    $self->appendAttribute($newnode);
+}
+
+sub setAttributeNode {
+    my $self = shift;
+    my ($node) = @_;
+    
+    if (my $attrib = $self->getAttributeNode($node->getName)) {
+        $attrib->setNodeValue($node->getValue);
+        return $attrib;
+    }
+    
+    my ($nsprefix) = ($node->getName() =~ /^($XML::XPath::Parser::NCName):($XML::XPath::Parser::NCName)$/o);
+    
+    if ($nsprefix && !$self->getNamespace($nsprefix)) {
+        die "No namespace matches prefix: $nsprefix";
+    }
+    
+    $self->appendAttribute($node);
+}
+
 sub getNamespace {
-	my $self = shift;
-	my ($prefix) = @_;
-	$prefix ||= $self->getPrefix;
-	my $namespaces = $self->[node_namespaces];
-	return unless $namespaces;
-	foreach my $ns (@$namespaces) {
-		return $ns if $ns->getPrefix eq $prefix;
-	}
+    my $self = shift;
+    my ($prefix) = @_;
+    $prefix ||= $self->getPrefix;
+    my $namespaces = $self->[node_namespaces];
+    return unless $namespaces;
+    foreach my $ns (@$namespaces) {
+        return $ns if $ns->getPrefix eq $prefix;
+    }
 }
 
 sub getNamespaces {
-	my $self = shift;
-	if ($self->[node_namespaces]) {
-		return wantarray ? @{$self->[node_namespaces]} : $self->[node_namespaces];
-	}
-	return wantarray ? () : [];
+    my $self = shift;
+    if ($self->[node_namespaces]) {
+        return wantarray ? @{$self->[node_namespaces]} : $self->[node_namespaces];
+    }
+    return wantarray ? () : [];
 }
 
 sub getNamespaceNodes { goto &getNamespaces }
 
 sub appendNamespace {
-	my $self = shift;
-	my ($ns) = @_;
-	push @{$self->[node_namespaces]}, $ns;
-	$ns->setParentNode($self);
-	$ns->set_pos($#{$self->[node_namespaces]});
+    my $self = shift;
+    my ($ns) = @_;
+    push @{$self->[node_namespaces]}, $ns;
+    $ns->setParentNode($self);
+    $ns->set_pos($#{$self->[node_namespaces]});
 }
 
 sub getPrefix {
-	my $self = shift;
-	$self->[node_prefix];
+    my $self = shift;
+    $self->[node_prefix];
 }
 
 sub getExpandedName {
-	my $self = shift;
-	warn "Expanded name not implemented for ", ref($self), "\n";
-	return;
+    my $self = shift;
+    warn "Expanded name not implemented for ", ref($self), "\n";
+    return;
 }
 
 sub _to_sax {
-	my $self = shift;
-	my ($doch, $dtdh, $enth) = @_;
-	
-	my $tag = $self->getName;
-	my @attr;
-	
-	for my $attr ($self->getAttributes) {
-		push @attr, $attr->getName, $attr->getValue;
-	}
-	
-	my $ns = $self->getNamespace($self->[node_prefix]);
-	if ($ns) {
-		$doch->start_element( 
-				{ 
-				Name => $tag,
-				Attributes => { @attr },
-				NamespaceURI => $ns->getExpanded,
-				Prefix => $ns->getPrefix,
-				LocalName => $self->getLocalName,
-				}
-			);
-	}
-	else {
-		$doch->start_element(
-				{
-				Name => $tag,
-				Attributes => { @attr },
-				}
-			);
-	}
-	
-	for my $kid ($self->getChildNodes) {
-		$kid->_to_sax($doch, $dtdh, $enth);
-	}
-	
-	if ($ns) {
-		$doch->end_element( 
-				{
-				Name => $tag,
-				NamespaceURI => $ns->getExpanded,
-				Prefix => $ns->getPrefix,
-				LocalName => $self->getLocalName
-				}
-			);
-	}
-	else {
-		$doch->end_element( { Name => $tag } );
-	}
+    my $self = shift;
+    my ($doch, $dtdh, $enth) = @_;
+    
+    my $tag = $self->getName;
+    my @attr;
+    
+    for my $attr ($self->getAttributes) {
+        push @attr, $attr->getName, $attr->getValue;
+    }
+    
+    my $ns = $self->getNamespace($self->[node_prefix]);
+    if ($ns) {
+        $doch->start_element( 
+                { 
+                Name => $tag,
+                Attributes => { @attr },
+                NamespaceURI => $ns->getExpanded,
+                Prefix => $ns->getPrefix,
+                LocalName => $self->getLocalName,
+                }
+            );
+    }
+    else {
+        $doch->start_element(
+                {
+                Name => $tag,
+                Attributes => { @attr },
+                }
+            );
+    }
+    
+    for my $kid ($self->getChildNodes) {
+        $kid->_to_sax($doch, $dtdh, $enth);
+    }
+    
+    if ($ns) {
+        $doch->end_element( 
+                {
+                Name => $tag,
+                NamespaceURI => $ns->getExpanded,
+                Prefix => $ns->getPrefix,
+                LocalName => $self->getLocalName
+                }
+            );
+    }
+    else {
+        $doch->end_element( { Name => $tag } );
+    }
 }
 
 sub string_value {
-	my $self = shift;
-	my $string = '';
-	foreach my $kid (@{$self->[node_children]}) {
-		if ($kid->getNodeType == ELEMENT_NODE
-				|| $kid->getNodeType == TEXT_NODE) {
-			$string .= $kid->string_value;
-		}
-	}
-	return $string;
+    my $self = shift;
+    my $string = '';
+    foreach my $kid (@{$self->[node_children]}) {
+        if ($kid->getNodeType == ELEMENT_NODE
+                || $kid->getNodeType == TEXT_NODE) {
+            $string .= $kid->string_value;
+        }
+    }
+    return $string;
 }
 
 sub toString {
-	my $self = shift;
-	my $norecurse = shift;
-	my $string = '';
-	if (! $self->[node_name] ) {
+    my $self = shift;
+    my $norecurse = shift;
+    my $string = '';
+    if (! $self->[node_name] ) {
             # root node
             return join('', map { $_->toString($norecurse) } @{$self->[node_children]});
-	}
-	$string .= "<" . $self->[node_name];
-	
+    }
+    $string .= "<" . $self->[node_name];
+    
         $string .= join('', map { $_->toString } @{$self->[node_namespaces]});
-	
+    
         $string .= join('', map { $_->toString } @{$self->[node_attribs]});
-	
-	if (@{$self->[node_children]}) {
-		$string .= ">";
+    
+    if (@{$self->[node_children]}) {
+        $string .= ">";
 
-		if (!$norecurse) {
+        if (!$norecurse) {
                         $string .= join('', map { $_->toString($norecurse) } @{$self->[node_children]});
-		}
-		
-		$string .= "</" . $self->[node_name] . ">";
-	}
-	else {
-		$string .= " />";
-	}
-	
-	return $string;
+        }
+        
+        $string .= "</" . $self->[node_name] . ">";
+    }
+    else {
+        $string .= " />";
+    }
+    
+    return $string;
 }
 
 1;

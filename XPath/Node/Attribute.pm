@@ -42,7 +42,9 @@ sub getNodeValue {
 	$self->[node_value];
 }
 
-*getData = \&getNodeValue;
+sub getData {
+    shift->getNodeValue(@_);
+}
 
 sub setNodeValue {
     my $self = shift;

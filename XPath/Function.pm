@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.19 2000/08/28 10:06:08 matt Exp $
+# $Id: Function.pm,v 1.20 2000/09/05 13:04:50 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::Number;
@@ -74,15 +74,7 @@ sub position {
         die "position: function doesn't take parameters [ ", @params, " ]\n";
     }
     # return pos relative to axis direction
-    # dunno if this is the right implementation :)
-    if ($self->{pp}->get_direction eq 'reverse') {
-        return XML::XPath::Number->new(
-                $self->{pp}->get_context_size - $self->{pp}->get_context_pos
-                );
-    }
-    else {
-        return XML::XPath::Number->new($self->{pp}->get_context_pos);
-    }
+    return XML::XPath::Number->new($self->{pp}->get_context_pos);
 }
 
 sub count {
@@ -162,7 +154,7 @@ sub string {
         return XML::XPath::Literal->new($params[0]->string_value);
     }
     
-    # TODO - this MUST be wrong!
+    # TODO - this MUST be wrong! - not sure now. -matt
     return XML::XPath::Literal->new($node->string_value);
     # default to nodeset with just $node in.
 }

@@ -1,4 +1,4 @@
-# $Id: Builder.pm,v 1.5 2000/08/24 16:22:58 matt Exp $
+# $Id: Builder.pm,v 1.6 2000/09/08 14:07:48 matt Exp $
 
 package XML::XPath::Builder;
 
@@ -17,7 +17,7 @@ sub new {
 	my $class = shift;
 	my $self = ($#_ == 0) ? { %{ (shift) } } : { @_ };
 
-        XML::XPath::Node->resetPos;
+        XML::XPath::Node->Pos;
         
 	bless $self, $class;
 }
@@ -34,7 +34,7 @@ sub mkelement {
 	
 	for my $attr (keys %$attribs) {
 		my $newattr = XML::XPath::Node::Attribute->new($attr, $attribs->{$attr});
-		$node->appendAttribute($newattr);
+		$node->appendAttribute($newattr, 1);
 	}
 	
 	return $node;
@@ -56,7 +56,7 @@ sub characters {
 	}
 	else {
 		my $node = XML::XPath::Node::Text->new($characters->{Data});
-		$self->{Current}->appendChild($node);
+		$self->{Current}->appendChild($node, 1);
 	}
 }
 
@@ -64,7 +64,7 @@ sub start_element {
 	my $self = shift;
 	my $element = shift;
 	my $node = mkelement($self, $element->{Name}, $element->{Attributes});
-	$self->{Current}->appendChild($node);
+	$self->{Current}->appendChild($node, 1);
 	$self->{Current} = $node;
 }
 
@@ -86,14 +86,14 @@ sub processing_instruction {
 	my $self = shift;
 	my $pi = shift;
 	my $node = XML::XPath::Node::PI->new($pi->{Target}, $pi->{Data});
-	$self->{Current}->appendChild($node);
+	$self->{Current}->appendChild($node, 1);
 }
 
 sub comment {
 	my $self = shift;
 	my $comment = shift;
 	my $node = XML::XPath::Node::Comment->new($comment->{Data});
-	$self->{Current}->appendChild($node);
+	$self->{Current}->appendChild($node, 1);
 }
 
 1;

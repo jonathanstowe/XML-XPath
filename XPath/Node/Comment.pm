@@ -1,4 +1,4 @@
-# $Id: Comment.pm,v 1.4 2000/08/24 16:23:02 matt Exp $
+# $Id: Comment.pm,v 1.5 2000/09/05 13:05:46 matt Exp $
 
 package XML::XPath::Node::Comment;
 
@@ -14,54 +14,56 @@ use vars qw/@ISA/;
 use XML::XPath::Node ':node_keys';
 
 sub new {
-	my $class = shift;
-	my ($comment) = @_;
-	
+    my $class = shift;
+    my ($comment) = @_;
+    
         my $pos = XML::XPath::Node->nextPos;
         
         my @vals;
         @vals[node_global_pos, node_comment] =
                 ($pos, $comment);
-	my $self = \@vals;
+    my $self = \@vals;
         
-	bless $self, $class;
+    bless $self, $class;
 }
 
 sub getNodeType { COMMENT_NODE }
 
 sub isCommentNode { 1; }
 
-sub getValue {
-	my $self = shift;
-	$self->[node_comment];
+sub getNodeValue {
+    return shift->[node_comment];
 }
 
 sub getData {
-	my $self = shift;
-	$self->[node_comment];
+    shift->getNodeValue;
+}
+
+sub setNodeValue {
+    shift->[node_comment] = shift;
 }
 
 sub _to_sax {
-	my $self = shift;
-	my ($doch, $dtdh, $enth) = @_;
-	
-	$doch->comment( { Data => $self->getValue } );
+    my $self = shift;
+    my ($doch, $dtdh, $enth) = @_;
+    
+    $doch->comment( { Data => $self->getValue } );
 }
 
 sub comment_escape {
-	my $data = shift;
+    my $data = shift;
     $data =~ s/--/&#45;&#45;/g;
-	return $data;
+    return $data;
 }
 
 sub string_value {
-	my $self = shift;
-	return $self->[node_comment];
+    my $self = shift;
+    return $self->[node_comment];
 }
 
 sub toString {
-	my $self = shift;
-	return '<!--' . comment_escape($self->[node_comment]) . '-->';
+    my $self = shift;
+    return '<!--' . comment_escape($self->[node_comment]) . '-->';
 }
 
 1;

@@ -1,4 +1,4 @@
-# $Id: Node.pm,v 1.9 2000/08/28 10:06:08 matt Exp $
+# $Id: Node.pm,v 1.10 2000/09/08 14:07:49 matt Exp $
 
 package XML::XPath::Node;
 
@@ -131,7 +131,6 @@ my $global_pos = 0;
 
 sub nextPos {
     my $class = shift;
-    
     return ++$global_pos;
 }
 
@@ -159,8 +158,8 @@ sub XMLescape {
         defined ($2) ? $DecodeDefaultEntity{$2} : "]]&gt;" /egsx;
     }
     else {
-        $str =~ s/(["><'&])|(]]>)/
-        defined ($1) ? $DecodeDefaultEntity{$1} : ']]&gt;' /gosex;
+        $str =~ s/([$default])|(]]>)/
+        defined ($1) ? $DecodeDefaultEntity{$1} : ']]&gt;' /gsex;
     }
 
 #?? could there be references that should not be expanded?
@@ -215,7 +214,7 @@ sub new {
     return bless $self, $class;
 }
 
-sub DESTROY {}
+# sub DESTROY {}
 
 sub AUTOLOAD {
     my $method = $AUTOLOAD;
@@ -234,6 +233,15 @@ sub AUTOLOAD {
         $obj && $obj->$method(@_);
     };
     goto &$AUTOLOAD;
+}
+
+sub Freeze {
+    warn "Freezing $_[0]\n";
+    UNIVERSAL::Freeze(@_);
+}
+
+sub Thaw {
+    UNIVERSAL::Thaw(@_);
 }
 
 package XML::XPath::NodeImpl;
@@ -367,7 +375,12 @@ sub insertAfter {
     my $posnode = shift;
     my $newnode = shift;
     
-    my $pos_number = $posnode->getNextSibling()->get_global_pos();
+    my $pos_number = eval {
+        $posnode->findnodes('following::node()')->get_node(1)->get_global_pos();
+    };
+    if (!defined $pos_number) {
+        $pos_number = XML::XPath::Node::nextPos();
+    }
     
     $posnode->renumber('descendant::node() | following::node()', +1);
     

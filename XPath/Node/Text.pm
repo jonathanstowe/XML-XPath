@@ -1,4 +1,4 @@
-# $Id: Text.pm,v 1.4 2000/08/24 16:23:02 matt Exp $
+# $Id: Text.pm,v 1.5 2000/09/05 13:05:47 matt Exp $
 
 package XML::XPath::Node::Text;
 
@@ -14,16 +14,16 @@ use vars qw/@ISA/;
 use XML::XPath::Node ':node_keys';
 
 sub new {
-	my $class = shift;
-	my ($text) = @_;
-	
+    my $class = shift;
+    my ($text) = @_;
+    
         my $pos = XML::XPath::Node->nextPos;
         
         my @vals;
         @vals[node_global_pos, node_text] = ($pos, $text);
-	my $self = \@vals;
+    my $self = \@vals;
         
-	bless $self, $class;
+    bless $self, $class;
 }
 
 sub getNodeType { TEXT_NODE }
@@ -31,36 +31,41 @@ sub getNodeType { TEXT_NODE }
 sub isTextNode { 1; }
 
 sub appendText {
-	my $self = shift;
-	my ($text) = @_;
-	$self->[node_text] .= $text;
+    my $self = shift;
+    my ($text) = @_;
+    $self->[node_text] .= $text;
 }
 
-sub getValue {
-	my $self = shift;
-	$self->[node_text];
+sub getNodeValue {
+    my $self = shift;
+    $self->[node_text];
 }
 
 sub getData {
-	my $self = shift;
-	$self->[node_text];
+    my $self = shift;
+    $self->[node_text];
+}
+
+sub setNodeValue {
+    my $self = shift;
+    $self->[node_text] = shift;
 }
 
 sub _to_sax {
-	my $self = shift;
-	my ($doch, $dtdh, $enth) = @_;
-	
-	$doch->characters( { Data => $self->getValue } );
+    my $self = shift;
+    my ($doch, $dtdh, $enth) = @_;
+    
+    $doch->characters( { Data => $self->getValue } );
 }
 
 sub string_value {
-	my $self = shift;
-	$self->[node_text];
+    my $self = shift;
+    $self->[node_text];
 }
 
 sub toString {
-	my $self = shift;
-	XML::XPath::Node::XMLescape($self->[node_text], "<&");
+    my $self = shift;
+    XML::XPath::Node::XMLescape($self->[node_text], "<&");
 }
 
 1;
