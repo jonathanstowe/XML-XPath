@@ -13,6 +13,13 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.19
+
+(Again - skipped a few changes, bad me)
+
+More bug fixes
+Added xpath utility for resolving xpath's on the command line
+
 =item 0.16
 
 There were a few uploads to CPAN where I didn't add to these changes...

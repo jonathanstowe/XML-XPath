@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.13 2000/03/07 19:34:04 matt Exp $
+# $Id: Parser.pm,v 1.14 2000/03/20 10:43:54 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -116,8 +116,8 @@ sub tokenize {
 	while($path =~ m/\G
 		\s* # ignore all whitespace
 		( # tokens
-			\"[^\"]*\"| # match quotes
-			\'[^\']*\'|
+			\"[^\"]*\"| # match quotes "
+			\'[^\']*\'| # match quotes '
 			\d+(\.\d*)?|\.\d+| # Match digits
 			\.\.| # match parent
 			\.| # match current
@@ -247,7 +247,7 @@ sub extract_loc_path {
 			elsif ($token =~ /^$AXIS_NAME($QName|\*|$NODE_TEST)$/o) {
 				push @$loc_path, XML::XPath::Step->new($self, $1, $2);
 			}
-			elsif ($token eq '' && $sep eq '/' && @$loc_path == 0) {
+			elsif ($token eq '' && ($sep eq '/' || $sep eq '//') && @$loc_path == 0) {
 				# root node
 				push @$loc_path, XML::XPath::Root->new();
 			}
@@ -312,6 +312,12 @@ sub extract_expr {
 			else {
 				($token, $sep) = @{ shift @$tokens };
 			}
+		}
+		elsif (!$token && ($sep eq '/' || $sep eq '//')) {
+#			warn "Found root or //\n";
+			unshift @$tokens, [$token, $sep];
+			$expr->set_lhs($self->extract_loc_path($tokens));
+			(undef, $sep) = @{ shift @$tokens };
 		}
 		
 		next if (!$token);
