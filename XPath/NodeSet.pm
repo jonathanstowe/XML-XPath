@@ -1,7 +1,9 @@
-# $Id: NodeSet.pm,v 1.3 2000/01/23 17:41:58 matt Exp $
+# $Id: NodeSet.pm,v 1.4 2000/03/07 19:34:04 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
+
+use XML::XPath::Boolean;
 
 sub new {
 	my $class = shift;
@@ -60,7 +62,7 @@ sub get_nodelist {
 
 sub to_boolean {
 	my $self = shift;
-	return (@$self > 0);
+	return (@$self > 0) ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
 }
 
 1;

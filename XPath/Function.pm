@@ -1,4 +1,4 @@
-# $Id: Function.pm,v 1.10 2000/02/28 10:40:21 matt Exp $
+# $Id: Function.pm,v 1.11 2000/03/07 19:34:04 matt Exp $
 
 package XML::XPath::Function;
 use XML::XPath::XMLParser;
@@ -322,6 +322,12 @@ sub number {
 	my ($node, @params) = @_;
 	die "number: Too many parameters\n" if @params > 1;
 	if ($params[0]) {
+		if (ref($params[0]) =~ /^(element|text|comment|pi|namespace|attribute)$/) {
+			# assume its a node
+			return XML::XPath::Number->new(
+					XML::XPath::XMLParser::string_value($params[0])
+					);
+		}
 		return $params[0]->to_number;
 	}
 	

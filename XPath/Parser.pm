@@ -1,4 +1,4 @@
-# $Id: Parser.pm,v 1.12 2000/02/28 10:40:21 matt Exp $
+# $Id: Parser.pm,v 1.13 2000/03/07 19:34:04 matt Exp $
 
 package XML::XPath::Parser;
 
@@ -115,7 +115,7 @@ sub tokenize {
 
 	while($path =~ m/\G
 		\s* # ignore all whitespace
-		(
+		( # tokens
 			\"[^\"]*\"| # match quotes
 			\'[^\']*\'|
 			\d+(\.\d*)?|\.\d+| # Match digits
@@ -141,6 +141,11 @@ sub tokenize {
 
 		my ($token, $sep) = ($1, $7);
 #		warn "TOKEN: $token, SEP: $sep\n";
+		if ($token =~ /^(and|or|mod|div)$/) {
+			# accidentally matched against NCName
+			push @tokens, ['', $token];
+			$token = '';
+		}
 		push @tokens, [$token, $sep];
 		
 	}

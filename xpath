@@ -1,0 +1,50 @@
+#!/usr/bin/perl -w
+use strict;
+
+unless (@ARGV == 2) {
+	unless (@ARGV == 1 && -t STDIN) {
+		print STDERR qq(Usage:
+$0 [filename] query
+				
+	If no filename is given, supply XML on STDIN.
+);
+		exit;
+	}
+}
+
+use XML::XPath;
+
+my $xpath;
+if (@ARGV == 2) {
+	$xpath = XML::XPath->new(filename => shift(@ARGV));
+}
+else {
+	my $xml;
+	while(<STDIN>) {
+		$xml .= $_;
+	}
+	$xpath = XML::XPath->new(xml => $xml);
+}
+	
+my $nodes = $xpath->find($ARGV[0]);
+
+unless ($nodes->isa('XML::XPath::NodeSet')) {
+	print "Query didn't return a nodeset. Value: ";
+	print $nodes->value, "\n";
+	exit;
+}
+
+if ($nodes->size) {
+	print "Found ", $nodes->size, " nodes with query '$ARGV[0]':\n";
+	foreach my $node ($nodes->get_nodelist) {
+		print "-- NODE --\n";
+		print XML::XPath::XMLParser::as_string($node);
+	}
+}
+else {
+	print "No nodes found for query '$ARGV[0]'";
+}
+
+print "\n";
+
+exit;
