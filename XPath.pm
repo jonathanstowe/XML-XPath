@@ -1,11 +1,11 @@
-# $Id: XPath.pm,v 1.29 2000/04/22 19:34:18 matt Exp $
+# $Id: XPath.pm,v 1.30 2000/05/08 13:07:40 matt Exp $
 
 package XML::XPath;
 
 use strict;
 use vars qw($VERSION $AUTOLOAD $revision);
 
-$VERSION = '0.24';
+$VERSION = '0.50';
 
 $XML::XPath::Namespaces = 1;
 $XML::XPath::Debug = 0;
@@ -79,6 +79,18 @@ sub findnodes {
 	return XML::XPath::NodeSet->new();
 }
 
+sub matches {
+	my $self = shift;
+	my ($node, $path, $context) = @_;
+
+	my @nodes = $self->findnodes($path, $context);
+
+	if (grep { "$node" eq "$_" } @nodes) {
+		return 1;
+	}
+	return;
+}
+
 sub findnodes_as_string {
 	my $self = shift;
 	my ($path, $context) = @_;
@@ -86,7 +98,7 @@ sub findnodes_as_string {
 	my $results = $self->find($path, $context);
 	
 	if ($results->isa('XML::XPath::NodeSet')) {
-		return join('', map { XML::XPath::XMLParser::as_string($_) } $results->get_nodelist);
+		return $results->to_literal->value;
 	}
 	
 	return $results->value;
@@ -99,17 +111,10 @@ sub findvalue {
 	my $results = $self->find($path, $context);
 	
 	if ($results->isa('XML::XPath::NodeSet')) {
-		return $results->to_literal;
+		return $results->to_literal->value;
 	}
 	
 	return $results;
-}
-
-sub cleanup {
-	my $self = shift;
-	my $context = $self->get_context;
-	return unless $context;
-	XML::XPath::XMLParser::dispose($context);
 }
 
 sub get_filename {
@@ -160,6 +165,15 @@ sub get_context {
 sub set_context {
 	my $self = shift;
 	$self->{_context} = shift;
+}
+
+sub cleanup {
+	my $self = shift;
+	if ($XML::XPath::SafeMode) {
+		my $context = $self->get_context;
+		return unless $context;
+		$context->dispose;
+	}
 }
 
 1;
@@ -256,10 +270,14 @@ to be valid XML though.
 Returns either a C<XML::XPath::Literal>, a C<XML::XPath::Boolean> or a
 C<XML::XPath::Number> object. If the path returns a NodeSet,
 $nodeset->to_literal is called automatically for you (and thus a
-C<XML::XPath::Literal is returned). Note that
+C<XML::XPath::Literal> is returned). Note that
 for each of the objects stringification is overloaded, so you can just
 print the value found, or manipulate it in the ways you would a normal
 perl value (e.g. using regular expressions).
+
+=head2 matches($node, $path, [$context])
+
+Returns true if the node matches the path (optionally in context $context).
 
 =head2 $XML::XPath::Namespaces
 
@@ -267,45 +285,44 @@ Set this to 0 if you I<don't> want namespace processing to occur. This
 will make everything a little (tiny) bit faster, but you'll suffer for it,
 probably.
 
-=head1 IMPORTANT
+=head1 Node Object Model
 
-The node format used by XML::XPath contains circular references. This
-means that you have to manually delete those references once you're
-done with the entire document tree (don't delete the circular
-references on just part of a tree or you'll get yourself into all sorts
-of trouble!). An example would be if you have a long-running process
-(e.g. mod_perl) that uses this module. If you just did the following
-(this is mod_perl specific, but you should get the idea):
+See L<XML::XPath::Node>, L<XML::XPath::Node::Element>, 
+L<XML::XPath::Node::Text>, L<XML::XPath::Node::Comment>,
+L<XML::XPath::Node::Attribute>, L<XML::XPath::Node::Namespace>,
+and L<XML::XPath::Node::PI>.
 
-  sub handler {
-    my $r = shift;
-    my $xp = XML::XPath->new( filename => $r->filename );
-  
-    my $nodes = $xp->find("//h1");
-  
-    foreach my $node ($nodes->get_nodelist) {
-      print XML::XPath::XMLParser::as_string($node), "\n\n";
-    }
-  }
+=head1 On Garbage Collection
 
-You would find your process size growing and growing. You have to
-manually delete those circular references. It's not all bad though -
-I've provided you with a cleanup method that you can use:
+XPath nodes work in a special way that allows circular references, and 
+yet still lets Perl's reference counting garbage collector to clean up
+the nodes after use. This should be totally transparent to the user,
+with one caveat: B<If you free your tree before letting go of a sub-tree,
+consider that playing with fire and you may get burned>. What does this
+mean to the average user? Not much. Provided you don't free (or let go
+out of scope) either the tree you passed to XML::XPath->new, or if you
+didn't pass a tree, and passed a filename or IO-ref, then provided you
+don't let the XML::XPath object go out of scope before you let results
+of find() and its friends go out of scope, then you'll be fine. Even if
+you B<do> let the tree go out of scope before results, you'll probably
+still be fine. The only case where you may get stung is when the last
+part of your path/query is either an ancestor or parent axis. In that
+case the worst that will happen is you'll end up with a circular reference
+that won't get cleared until interpreter destruction time. You can get
+around that by explicitly calling $node->DESTROY on each of your result
+nodes, if you really need to do that.
 
-  sub handler {
-    my $r = shift;
-    my $xp = XML::XPath->new( filename => $r->filename );
-  
-    my $nodes = $xp->find("//h1");
-  
-    foreach my $node ($nodes->get_nodelist) {
-      print XML::XPath::XMLParser::as_string($node), "\n\n";
-    }
-    $xp->cleanup();
-  }
+Mail me direct if that's not clear. Note that it's not doom and gloom. It's
+by no means perfect, but the worst that will happen is a long running process
+could leak memory. Most long running processes will therefore be able to
+explicitly be careful not to free the tree (or XML::XPath object) before
+freeing results. AxKit, an application that uses XML::XPath, does this and
+I didn't have to make any changes to the code - it's already sensible
+programming.
 
-Beware that nodes are completely useless after they've been disposed
-of.
+If you I<really> don't want all this to happen, then set the variable
+$XML::XPath::SafeMode, and call $xp->cleanup() on the XML::XPath object
+when you're finished, or $tree->dispose() if you have a tree instead.
 
 =head1 Example
 
@@ -332,3 +349,11 @@ in the body of the message. There are lots of friendly people on the
 list, including myself, and we'll be glad to get you started.
 
 Matt Sergeant, matt@sergeant.org
+
+=head1 SEE ALSO
+
+L<XML::XPath::Literal>, L<XML::XPath::Boolean>, L<XML::XPath::Number>,
+L<XML::XPath::XMLParser>, L<XML::XPath::NodeSet>, L<XML::XPath::PerlSAX>,
+L<XML::XPath::Builder>.
+
+=cut

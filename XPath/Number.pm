@@ -1,4 +1,4 @@
-# $Id: Number.pm,v 1.8 2000/04/20 09:12:13 matt Exp $
+# $Id: Number.pm,v 1.9 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::Number;
 use XML::XPath::Boolean;
@@ -42,6 +42,8 @@ sub to_boolean {
 
 sub to_literal { XML::XPath::Literal->new($_[0]->as_string); }
 sub to_number { $_[0]; }
+
+sub string_value { goto &to_literal; }
 
 1;
 __END__

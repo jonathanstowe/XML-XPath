@@ -1,4 +1,4 @@
-# $Id: Expr.pm,v 1.12 2000/03/07 20:44:18 matt Exp $
+# $Id: Expr.pm,v 1.13 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::Expr;
 use XML::XPath::Function;
@@ -162,8 +162,7 @@ sub op_equals {
 		# on the string-values of the two nodes is true.
 		foreach my $lhnode ($lh_results->get_nodelist) {
 			foreach my $rhnode ($rh_results->get_nodelist) {
-				if (XML::XPath::XMLParser::string_value($lhnode) eq
-						XML::XPath::XMLParser::string_value($rhnode)) {
+				if ($lhnode->string_value eq $rhnode->string_value) {
 					return XML::XPath::Boolean->True;
 				}
 			}
@@ -268,10 +267,8 @@ sub op_ge {
 
 		foreach my $lhnode ($lh_results->get_nodelist) {
 			foreach my $rhnode ($rh_results->get_nodelist) {
-				my $lhNum = XML::XPath::Number->new(
-						XML::XPath::XMLParser::string_value($lhnode));
-				my $rhNum = XML::XPath::Number->new(
-						XML::XPath::XMLParser::string_value($rhnode));
+				my $lhNum = XML::XPath::Number->new($lhnode->string_value);
+				my $rhNum = XML::XPath::Number->new($rhnode->string_value);
 				if ($lhNum->value >= $rhNum->value) {
 					return XML::XPath::Boolean->True;
 				}
@@ -366,10 +363,8 @@ sub op_gt {
 
 		foreach my $lhnode ($lh_results->get_nodelist) {
 			foreach my $rhnode ($rh_results->get_nodelist) {
-				my $lhNum = XML::XPath::Number->new(
-						XML::XPath::XMLParser::string_value($lhnode));
-				my $rhNum = XML::XPath::Number->new(
-						XML::XPath::XMLParser::string_value($rhnode));
+				my $lhNum = XML::XPath::Number->new($lhnode->string_value);
+				my $rhNum = XML::XPath::Number->new($rhnode->string_value);
 				if ($lhNum->value > $rhNum->value) {
 					return XML::XPath::Boolean->True;
 				}

@@ -13,6 +13,13 @@ such as are provided by XSLT and XPointer.
 
 =over
 
+=item 0.50
+
+Major upgrade: new node object model
+Added matches() and findnodes_as_string() methods
+Beginings of attempt at SAX2 code
+Bug fixes
+
 =item 0.23
 
 Documentation Updates
@@ -82,4 +89,4 @@ This is the first public release
 
 =back
 
-$Id: README,v 1.10 2000/04/22 19:34:18 matt Exp $
+$Id: README,v 1.11 2000/05/08 13:12:48 matt Exp $

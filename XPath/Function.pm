@@ -1,7 +1,6 @@
-# $Id: Function.pm,v 1.12 2000/03/07 20:44:18 matt Exp $
+# $Id: Function.pm,v 1.13 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::Function;
-use XML::XPath::XMLParser;
 use XML::XPath::Number;
 use XML::XPath::Literal;
 use XML::XPath::Boolean;
@@ -98,7 +97,7 @@ sub id {
 		# result is the union of applying id() to the
 		# string value of each node in the nodeset.
 		foreach my $node ($params[0]->get_nodelist) {
-			my $string = XML::XPath::XMLParser::string_value($node);
+			my $string = $node->string_value;
 			$results->append($self->id($node, XML::XPath::Literal->new($string)));
 		}
 	}
@@ -108,7 +107,7 @@ sub id {
 		my @ids = split; # splits $_
 		# get root node
 		my $root = $node;
-		$root = $root->[node_parent] while($root->[node_parent]);
+		$root = $root->getParentNode while($root->getParentNode);
 		foreach my $id (@ids) {
 			$results->append($self->_find_id($root, $id));
 		}
@@ -121,10 +120,10 @@ sub _find_id {
 	my $self = shift;
 	my ($node, $id) = @_;
 	my $results = XML::XPath::NodeSet->new();
-	foreach my $kid (@{$node->[node_children]}) {
+	foreach my $kid (@{$node->getChildNodes}) {
 		# check attribs for id
-		foreach my $attr (@{$kid->[node_attribs]}) {
-			if ($attr->[node_key] eq 'id' && $attr->[node_value] eq $id) {
+		foreach my $attr (@{$kid->getAttributes}) {
+			if ($attr->getName eq 'id' && $attr->getValue eq $id) {
 				$results->push($kid);
 			}
 		}
@@ -145,11 +144,7 @@ sub local_name {
 		$node ||= $nodeset->unshift;
 	}
 	
-	my $exp = XML::XPath::XMLParser::expanded_name($node);
-	if ($exp =~ /:(.*)/) {
-		$exp = $1;
-	}
-	return XML::XPath::Literal->new($exp);
+	return XML::XPath::Literal->new($node->getLocalName);
 }
 
 sub namespace_uri {
@@ -169,8 +164,7 @@ sub name {
 		$node ||= $nodeset->unshift;
 	}
 	
-	return XML::XPath::Literal->new(
-			XML::XPath::XMLParser::expanded_name($node));
+	return XML::XPath::Literal->new($node->getName);
 }
 
 ### STRING FUNCTIONS ###
@@ -180,13 +174,7 @@ sub string {
 	my ($node, @params) = @_;
 	die "string: Too many parameters\n" if @params > 1;
 	if ($params[0]) {
-		if (ref($params[0]) =~ /^(element|text|comment|pi|namespace|attribute)$/) {
-			# assume its a node
-			return XML::XPath::Literal->new(
-					XML::XPath::XMLParser::string_value($params[0])
-					);
-		}
-		return $params[0]->to_literal;
+		return $params[0]->string_value;
 	}
 	
 	# default to nodeset with just $node in.
@@ -269,7 +257,7 @@ sub string_length {
 	}
 	else {
 		return XML::XPath::Number->new(
-				length(XML::XPath::XMLParser::string_value($node))
+				length($node->string_value)
 				);
 	}
 }
@@ -283,7 +271,7 @@ sub normalize_space {
 		$str = $params[0]->value;
 	}
 	else {
-		$str = XML::XPath::XMLParser::string_value($node);
+		$str = $node->string_value;
 	}
 	$str =~ s/^\s*//;
 	$str =~ s/\s*$//;
@@ -343,23 +331,22 @@ sub number {
 	my ($node, @params) = @_;
 	die "number: Too many parameters\n" if @params > 1;
 	if ($params[0]) {
-		if (ref($params[0]) =~ /^(element|text|comment|pi|namespace|attribute)$/) {
-			# assume its a node
+		if ($params[0]->isa('XML::XPath::Node')) {
 			return XML::XPath::Number->new(
-					XML::XPath::XMLParser::string_value($params[0])
+					$params[0]->string_value
 					);
 		}
 		return $params[0]->to_number;
 	}
 	
-	# default to nodeset with just $node in. ??? wierd.
+	return XML::XPath::Number->new( $node->string_value );
 }
 
 sub sum {
 	my $self = shift;
 	my ($node, @params) = @_;
 	die "sum: Parameter must be a NodeSet\n" unless $params[0]->isa('XML::XPath::NodeSet');
-	die "sum: Function not supported\n";
+	die "sum: Function not yet supported\n";
 }
 
 sub floor {

@@ -1,4 +1,4 @@
-# $Id: NodeSet.pm,v 1.7 2000/04/20 09:12:13 matt Exp $
+# $Id: NodeSet.pm,v 1.11 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::NodeSet;
 use strict;
@@ -68,10 +68,16 @@ sub to_boolean {
 	return (@$self > 0) ? XML::XPath::Boolean->True : XML::XPath::Boolean->False;
 }
 
+sub string_value {
+	my $self = shift;
+	return '' unless @$self;
+	return XML::XPath::Literal->new($self->[0]->string_value);
+}
+
 sub to_literal {
 	my $self = shift;
 	return XML::XPath::Literal->new(
-			join('', map { XML::XPath::XMLParser::string_value($_) } @$self)
+			join('', map { $_->string_value } @$self)
 			);
 }
 
@@ -118,10 +124,15 @@ done for you by XPath.
 Returns a list of nodes. See L<XML::XPath::XMLParser> for the format of
 the nodes.
 
+=head2 string_value()
+
+Returns the string-value of the first node in the list.
+See the XPath specification for what "string-value" means.
+
 =head2 to_literal()
 
-Returns the concatenation of the string-value of all the nodes in the list.
-See the XPath specification for what "string-value" means.
+Returns the concatenation of all the string-values of all
+the nodes in the list.
 
 =head2 get_node($pos)
 

@@ -1,62 +1,18 @@
-# $Id: XMLParser.pm,v 1.30 2000/04/20 09:12:13 matt Exp $
+# $Id: XMLParser.pm,v 1.32 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::XMLParser;
 
-use vars qw/$VERSION @ISA @EXPORT/;
 use strict;
 
 use XML::Parser;
-
-require Exporter;
-
-@ISA = ('Exporter');
-
-# All
-sub node_parent () { 0; }
-sub node_pos () { 1; }
-
-# Element
-sub node_prefix () { 2; }
-sub node_children () { 3; }
-sub node_name () { 4; }
-sub node_attribs () { 5; }
-sub node_namespaces () { 6; }
-
-# Char
-sub node_text () { 2; }
-
-# PI
-sub node_target () { 2; }
-sub node_data () { 3; }
-
-# Comment
-sub node_comment () { 2; }
-
-# Attribute
-# sub node_prefix () { 2; }
-sub node_key () { 3; }
-sub node_value () { 4; }
-
-# Namespaces
-# sub node_prefix () { 2; }
-sub node_expanded () { 3; }
-
-@EXPORT = qw(
-		node_parent
-		node_pos
-		node_name
-		node_attribs
-		node_namespaces
-		node_children
-		node_text
-		node_target
-		node_data
-		node_comment
-		node_prefix
-		node_key
-		node_value
-		node_expanded
-		);
+#use XML::XPath;
+use XML::XPath::Node;
+use XML::XPath::Node::Element;
+use XML::XPath::Node::Text;
+use XML::XPath::Node::Comment;
+use XML::XPath::Node::PI;
+use XML::XPath::Node::Attribute;
+use XML::XPath::Node::Namespace;
 
 my @options = qw(
 		filename
@@ -107,36 +63,20 @@ sub parsefile {
 	$self->parse;
 }
 
-sub mkattrib {
-	my ($parent, $key, $val, $prefix) = @_;
-	return bless([$parent, undef, $prefix, $key, $val], 'attribute');
-}
-
-sub mkelement {
-	my ($parent, $tag) = @_;
-	return bless([$parent, undef, undef, [], $tag], 'element');
-}
-
-sub mknamespace {
-	my ($parent, $prefix, $expanded) = @_;
-	return bless([$parent, undef, $prefix, $expanded], 'namespace');
-}
-
 sub buildelement {
 	my ($e, $current, $tag, $attribs) = @_;
 	
 #	local $^W; # ignore "Use of uninitialized value"... Oh for perl 5.6...
 	
-	my $node = mkelement($current, $tag);
-	
 #	($current, undef, undef, [], $tag);
 #	$node[node_parent] = $current;
 #	$node[node_name] = $tag;
 
-	if ($XML::XPath::Namespaces && !$_namespaces_on && XML::Parser::Expat::namespace($e, $tag)) {
+	if (!$_namespaces_on && $XML::XPath::Namespaces && XML::Parser::Expat::current_ns_prefixes($e)) {
 		$_namespaces_on = 1;
 	}
 	
+	my $prefix;
 	goto SKIP_NS unless $_namespaces_on;
 	
 	my @prefixes = XML::Parser::Expat::current_ns_prefixes($e);
@@ -148,26 +88,31 @@ sub buildelement {
 	@exp_to_pre{@expanded} = @prefixes;
 	@pre_to_exp{@prefixes} = @expanded;
 	
-	my $prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
+	$prefix = $exp_to_pre{XML::Parser::Expat::namespace($e, $tag) || '#default'};
 	undef $prefix if $prefix eq '#default';
-	$node->[node_name] = $prefix ? "$prefix:$tag" : $tag;
-	$node->[node_prefix] = $prefix;
 	
+	my @namespaces;
 	while (@prefixes) {
 		my $pre = shift @prefixes;
-		my $newns = mknamespace($node, $pre, $pre_to_exp{$pre});
-		push @{$node->[node_namespaces]}, $newns;
-		$newns->[node_pos] = $#{$node->[node_namespaces]};
+		my $newns = XML::XPath::Node::Namespace->new($pre, $pre_to_exp{$pre});
+		push @namespaces, $newns;
 	}
 	
 SKIP_NS:
 	
+	$tag = "$prefix:$tag" if $prefix;
+	my $node = XML::XPath::Node::Element->new($tag, $prefix);
+	
 	while (@$attribs) {
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
 		my $namespace = XML::Parser::Expat::namespace($e, $key) || "#default";
-		my $newattr = mkattrib($node, $key, $val, $exp_to_pre{$namespace});
-		push @{$node->[node_attribs]}, $newattr;
-		$newattr->[node_pos] = $#{$node->[node_attribs]};
+#		warn "<$tag> $key 's namespace is '$namespace'\n";
+		my $newattr = XML::XPath::Node::Attribute->new($key, $val, $exp_to_pre{$namespace});
+		$node->appendAttribute($newattr);
+	}
+	
+	foreach my $ns (@namespaces) {
+		$node->appendNamespace($ns);
 	}
 
 	return $node;
@@ -176,237 +121,62 @@ SKIP_NS:
 sub parse_init {
 	my $e = shift;
 	
-	$_current = bless [], 'element';
+	$_current = XML::XPath::Node::Element->new();
+	$e->{DOC_Node} = $_current;
 	$_namespaces_on = 0;
 }
 
 sub parse_final {
 	my $e = shift;
-	my $result = $_current;
 	undef $_current;
-	return $result;
-}
-
-sub mktext {
-	my ($parent, $text) = @_;
-	return bless ([$parent, undef, $text], 'text');
+	return $e->{DOC_Node};
 }
 
 sub parse_char {
 	my $e = shift;
 	my $text = shift;
 	
-	if (@{$_current->[node_children]} > 0 && ref $_current->[node_children][-1] eq 'text') {
+	my @kids = $_current->getChildNodes;
+	if (@kids && $kids[-1]->getNodeType == TEXT_NODE) {
 		# append to previous text node
-		$_current->[node_children][-1][node_text] .= $text;
+		$kids[-1]->appendText($text);
 		return;
 	}
 	
-	my $node = mktext($_current, $text);
-	push @{$_current->[node_children]}, $node;
-	$node->[node_pos] = $#{$_current->[node_children]};
+	my $node = XML::XPath::Node::Text->new($text);
+	$_current->appendChild($node);
 }
 
 sub parse_start {
 	my $e = shift;
 	my $tag = shift;
 	my $node = buildelement($e, $_current, $tag, \@_);
-	push @{$_current->[node_children]}, $node;
-	$node->[node_pos] = $#{$_current->[node_children]};
+	$_current->appendChild($node);
 	$_current = $node;
 }
 
 sub parse_end {
 	my $e = shift;
-	$_current = $_current->[node_parent];
-}
-
-sub mkpi {
-	my ($parent, $target, $data) = @_;
-	return bless([$parent, undef, $target, $data], 'pi');
+	$_current = $_current->getParentNode;
 }
 
 sub parse_pi {
 	my $e = shift;
 	my ($target, $data) = @_;
-	my $node = mkpi($_current, $target, $data);
-	push @{$_current->[node_children]}, $node;
-	$node->[node_pos] = $#{$_current->[node_children]};
-}
-
-sub mkcomment {
-	my ($parent, $data) = @_;
-	return bless([$parent, undef, $data], 'comment');
+	my $node = XML::XPath::Node::PI->new($target, $data);
+	$_current->appendChild($node);
 }
 
 sub parse_comment {
 	my $e = shift;
 	my ($data) = @_;
-	my $node = mkcomment($_current, $data);
-	push @{$_current->[node_children]}, $node;
-	$node->[node_pos] = $#{$_current->[node_children]};
+	my $node = XML::XPath::Node::Comment->new($data);
+	$_current->appendChild($node);
 }
 
 sub as_string {
 	my $node = shift;
-	my $string;
-	if (ref $node eq 'element' && $node->[node_parent]) {
-		$string .= "<" . $node->[node_name];
-		
-		foreach my $ns (@{$node->[node_namespaces]}) {
-			$string .= as_string($ns);
-		}
-		
-		foreach my $attr (@{$node->[node_attribs]}) {
-			$string .= as_string($attr);
-		}
-
-		$string .= ">";
-
-		# do kids
-		foreach my $kid (@{$node->[node_children]}) {
-			$string .= as_string($kid);
-		}
-		$string .= "</" . $node->[node_name] . ">";
-
-		if (!$node->[node_parent]->[node_parent]) {
-			$string .= "\n";
-		}
-	}
-	elsif (ref $node eq 'text') {
-		$string .= XML::Parser::Expat->xml_escape($node->[node_text]);
-	}
-	elsif (ref $node eq 'comment') {
-		$string .= '<!--' . $node->[node_comment] . '-->';
-		if (!$node->[node_parent]->[node_parent]) {
-			$string .= "\n";
-		}
-	}
-	elsif (ref $node eq 'pi') {
-		$string .= "<?" . $node->[node_target] . " " . XML::Parser::Expat->xml_escape($node->[node_data]) . "?>";
-		if (!$node->[node_parent]->[node_parent]) {
-			$string .= "\n";
-		}
-	}
-	elsif (ref $node eq 'namespace') {
-		return '' unless defined $node->[node_expanded];
-		if ($node->[node_prefix] eq '#default') {
-			$string .= ' xmlns="';
-		}
-		else {
-			$string .= ' xmlns:' . $node->[node_prefix] . '="';
-		}
-		$string .= XML::Parser::Expat->xml_escape($node->[node_expanded]);
-		$string .= '"';
-	}
-	elsif (ref $node eq 'attribute') {
-		$string .= ' ';
-		if ($node->[node_prefix]) {
-			$string .= ' ' . $node->[node_prefix] . ':';
-		}
-		$string .= join('', 
-					$node->[node_key], '="',
-					XML::Parser::Expat->xml_escape($node->[node_value], '"'),
-					'"');
-	}
-	elsif (ref $node eq 'element') {
-		# just do kids for root node
-		foreach my $kid (@{$node->[node_children]}) {
-			$string .= as_string($kid);
-		}
-	}
-	else {
-		die "Unknown node type : ", ref($node);
-	}
-	return $string;
-}
-
-sub expanded_name {
-	my $node = shift;
-	# I got this from 4XPath (python, ugh!), but I think it's wrong :)
-	if (ref($node) eq 'element') {
-		return $node->[node_name];
-	}
-	elsif (ref($node) eq 'text') {
-		# This is a guess - the spec leave it undefined.
-		return '';
-	}
-	elsif (ref($node) eq 'comment') {
-		return '';
-	}
-	elsif (ref($node) eq 'attribute') {
-		return $node->[node_key];
-	}
-	elsif (ref($node) eq 'namespace') {
-		return '';
-	}
-	elsif (ref($node) eq 'pi') {
-		# This is a guess - the spec leaves it undefined.
-		return $node->[node_target];
-	}
-}
-
-sub string_value {
-	my $node = shift;
-	if (ref($node) eq 'element') {
-		return _element_string_value($node);
-	}
-	elsif (ref($node) eq 'text') {
-		# This is a guess - the spec leave it undefined.
-		return $node->[node_text];
-	}
-	elsif (ref($node) eq 'comment') {
-		return $node->[node_comment];
-	}
-	elsif (ref($node) eq 'attribute') {
-		return $node->[node_value];
-	}
-	elsif (ref($node) eq 'namespace') {
-		return $node->[node_expanded];
-	}
-	elsif (ref($node) eq 'pi') {
-		# This is a guess - the spec leaves it undefined.
-		return $node->[node_data];
-	}
-}
-
-sub _element_string_value {
-	my $node = shift;
-	my $string;
-	foreach my $kid (@{$node->[node_children]}) {
-		if (ref $kid eq 'element') {
-			$string .= _element_string_value($kid);
-		}
-		elsif (ref $kid eq 'text') {
-			$string .= $kid->[node_text];
-		}
-	}
-	return $string;
-}
-
-sub dispose {
-	my $node = shift;
-	if (ref($node) eq 'element' && $node->[node_parent]) {
-		foreach my $attr (@{$node->[node_attribs]}) {
-			undef $attr->[node_parent];
-		}
-		undef $node->[node_attribs];
-		foreach my $ns (@{$node->[node_namespaces]}) {
-			undef $ns->[node_parent];
-		}
-		undef $node->[node_attribs];
-		foreach my $kid (@{$node->[node_children]}) {
-			dispose($kid);
-		}
-		undef $node->[node_children];
-	}
-	elsif (ref($node) eq 'element') {
-		# root node
-		foreach my $kid (@{$node->[node_children]}) {
-			dispose($kid);
-		}
-	}
-	undef $node->[node_parent];
+	$node->toString;
 }
 
 sub get_parser { shift->{_parser}; }
@@ -567,62 +337,6 @@ handling mechanism (eval{};) if you want to avoid this.
 The parsefile method is identical to parse() except it expects a single
 parameter that is a string naming a file to open and parse. Again it
 returns a tree and also dies if there are XML errors.
-
-=head1 Functions
-
-There are a couple of utility function in here, located here because this is
-where specific knowledge of the node structure is.
-
-=head2 as_string($node)
-
-When passed a node this will correctly dump out XML that corresponds to that
-node. (actually that's not strictly true - if you pass it anything other than
-an element node then it won't be proper XML at all). It should do all the
-appropriate escaping, etc.
-
-=head2 string_value($node)
-
-This returns the "string-value" of a node, as per the spec. It probably doesn't
-need to be used by anyone except people developing XPath routines.
-
-=head2 dispose($node)
-
-This is a B<vitally> important function. If you're building an application
-that uses XML::XPath::XMLParser more than once (i.e. you're retrieving more
-than one tree) then you must dispose of your nodes using this method if
-you don't want them to continue to use memory in your system. This is because
-of Perl's crappy garbage collection system (refcounting) and the circular
-references in the node structure:
-
-	XML::XPath::XMLParser::dispose($node);
-
-This method isn't exported and I don't intend it to ever be that way - I hate
-exporting methods (I make exceptions for the node_ constants in this file).
-
-=head2 mk*
-
-The mk* functions construct nodes for you, should you need to do that outside
-of XML::XPath. The do not add nodes to the right place in the parent, you
-have to do that manually after constructing the node (this is subject to change).
-Neither do they set the node_pos value.
-
-=over 4
-
-=item mkelement($parent, $tag) - Constructs an element node.
-
-=item mkattrib($parent, $key, $value, $prefix) - Constructs an attribute node. $prefix
-is the namespace prefix. $parent must be the element node. Does not add the
-attribute to the element's list of attributes.
-
-=item mknamespace($parent, $prefix, $expanded) - Constructs a namespace node.
-
-=item mkcomment($parent, $text) - Constructs a comment node
-
-=item mktext($parent, $text) - Constructs a text node
-
-=item mkpi($parent, $target, $data) - Constructs a processing instruction node.
-
-=back
 
 =head1 NOTICES
 

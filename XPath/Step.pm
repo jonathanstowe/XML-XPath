@@ -1,8 +1,8 @@
-# $Id: Step.pm,v 1.17 2000/04/17 17:08:52 matt Exp $
+# $Id: Step.pm,v 1.18 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::Step;
-use XML::XPath::XMLParser;
 use XML::XPath::Parser;
+use XML::XPath::Node;
 use strict;
 
 sub new {
@@ -77,6 +77,8 @@ sub evaluate {
 		$initial_nodeset = $self->filter_by_predicate($initial_nodeset, $predicate);
 	}
 	
+	$self->{pp}->set_context_set(undef);
+
 	return $initial_nodeset;
 }
 
@@ -110,11 +112,12 @@ sub axis_ancestor {
 	my ($context, $results) = @_;
 	
 	$self->{pp}->set_direction('reverse');
-	return $results unless $context->[node_parent];
-	if (node_test($self, $context->[node_parent])) {
-		$results->push($context->[node_parent]);
+	my $parent = $context->getParentNode;
+	return $results unless $parent;
+	if (node_test($self, $parent)) {
+		$results->push($parent);
 	}
-	axis_ancestor($self, $context->[node_parent], $results);
+	axis_ancestor($self, $parent, $results);
 }
 
 sub axis_ancestor_or_self {
@@ -125,15 +128,17 @@ sub axis_ancestor_or_self {
 	if (node_test($self, $context)) {
 		$results->push($context);
 	}
-	axis_ancestor_or_self($self, $context->[node_parent], $results) if $context->[node_parent];
+	if (my $parent = $context->getParentNode) {
+		axis_ancestor_or_self($self, $parent, $results);
+	}
 }
 
 sub axis_attribute {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless ref($context) eq 'element';
-	foreach my $attrib (@{$context->[node_attribs]}) {
+	return $results unless $context->getNodeType == ELEMENT_NODE;
+	foreach my $attrib (@{$context->getAttributes}) {
 		if ($self->test_attribute($attrib)) {
 			$results->push($attrib);
 		}
@@ -144,8 +149,8 @@ sub axis_child {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless ref($context) eq 'element';
-	foreach my $node (@{$context->[node_children]}) {
+	return $results unless $context->getNodeType == ELEMENT_NODE;
+	foreach my $node (@{$context->getChildNodes}) {
 		if (node_test($self, $node)) {
 			$results->push($node);
 		}
@@ -156,8 +161,8 @@ sub axis_descendant {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless ref($context) eq 'element';
-	foreach my $node (@{$context->[node_children]}) {
+	return $results unless $context->getNodeType == ELEMENT_NODE;
+	foreach my $node (@{$context->getChildNodes}) {
 		if (node_test($self, $node)) {
 			$results->push($node);
 		}
@@ -172,7 +177,7 @@ sub axis_descendant_or_self {
 	if (node_test($self, $context)) {
 		$results->push($context);
 	}
-	foreach my $node (@{$context->[node_children]}) {
+	foreach my $node (@{$context->getChildNodes}) {
 		axis_descendant_or_self($self, $node, $results);
 	}
 }
@@ -181,10 +186,11 @@ sub axis_following {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->[node_parent];
-	my $i = $context->[node_pos];
-	for (my $ref = $i + 1; $ref < @{$context->[node_parent]}; $ref++) {
-		axis_descendant_or_self($self, $context->[node_parent]->[node_children]->[$ref], $results);
+	my $parent = $context->getParentNode;
+	return $results unless $parent;
+	my $i = $context->get_pos;
+	for (my $ref = $i + 1; $ref < @{$parent->getChildNodes}; $ref++) {
+		axis_descendant_or_self($self, $parent->getChildNodes->[$ref], $results);
 	}
 }
 
@@ -192,12 +198,14 @@ sub axis_following_sibling {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->[node_parent];
-	my $i = $context->[node_pos] + 1;
+	my $parent = $context->getParentNode;
+	return $results unless $parent;
+	my $i = $context->get_pos + 1;
+	my $children = $parent->getChildNodes;
 	while(1) {
-		last unless $context->[node_parent]->[node_children]->[$i];
-		if (node_test($self, $context->[node_parent]->[node_children]->[$i])) {
-			$results->push($context->[node_parent]->[node_children]->[$i]);
+		last unless $children->[$i];
+		if (node_test($self, $children->[$i])) {
+			$results->push($children->[$i]);
 		}
 		$i++;
 	}
@@ -207,8 +215,8 @@ sub axis_namespace {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless ref($context) eq 'element';
-	foreach my $ns (@{$context->[node_namespaces]}) {
+	return $results unless $context->getNodeType == ELEMENT_NODE;
+	foreach my $ns (@{$context->getNamespaces}) {
 		if ($self->test_namespace($ns)) {
 			$results->push($ns);
 		}
@@ -219,9 +227,10 @@ sub axis_parent {
 	my $self = shift;
 	my ($context, $results) = @_;
 	
-	return $results unless $context->[node_parent];
-	if (node_test($self, $context->[node_parent])) {
-		$results->push($context->[node_parent]);
+	my $parent = $context->getParentNode;
+	return $results unless $parent;
+	if (node_test($self, $parent)) {
+		$results->push($parent);
 	}
 }
 
@@ -232,10 +241,11 @@ sub axis_preceding {
 	$self->{pp}->set_direction('reverse');
 	# all preceding nodes in document order, except ancestors
 	# (go through each sibling, and get decendant-or-self)
-	my $i = $context->[node_pos];
+	my $i = $context->get_pos;
 	my $ref = 0;
-	while($context->[node_parent][node_children][$ref] ne $context) {
-		axis_descendant_or_self($self, $context->[node_parent][node_children][$ref], $results);
+	my $kids = $context->getParentNode->getChildNodes;
+	while($kids->[$ref] ne $context) {
+		axis_descendant_or_self($self, $kids->[$ref], $results);
 		$ref++;
 	}
 }
@@ -245,12 +255,14 @@ sub axis_preceding_sibling {
 	my ($context, $results) = @_;
 	
 	$self->{pp}->set_direction('reverse');
-	return $results unless $context->[node_parent];
-	my $i = $context->[node_pos];
+	my $parent = $context->getParentNode;
+	return $results unless $parent;
+	my $i = $context->get_pos;
 	my $ref = 0;
-	while($context->[node_parent]->[node_children]->[$ref] ne $context) {
-		if ($self->test_node($context->[node_parent]->[node_children]->[$ref])) {
-			$results->push($context->[node_parent]->[node_children]->[$ref]);
+	my $kids = $parent->getChildNodes;
+	while($kids->[$ref] ne $context) {
+		if ($self->test_node($kids->[$ref])) {
+			$results->push($kids->[$ref]);
 		}
 		$ref++;
 	}
@@ -282,19 +294,19 @@ sub node_test {
 
 	if ($self->{test} =~ /^(text\(\)|comment\(\)|processing-instruction\(\)|processing-instruction)$/) {
 		if ($self->{test} eq 'text()') {
-			return 1 if ref($node) eq 'text';
+			return 1 if $node->getNodeType == TEXT_NODE;
 		}
 		elsif ($self->{test} eq 'comment()') {
-			return 1 if ref($node) eq 'comment';
+			return 1 if $node->getNodeType == COMMENT_NODE;
 		}
 		elsif ($self->{test} eq 'processing-instruction()') {
 			warn "Unreachable code???";
-			return 1 if ref($node) eq 'pi';
+			return 1 if $node->getNodeType == PROCESSING_INSTRUCTION_NODE;
 		}
 		elsif ($self->{test} eq 'processing-instruction') {
-			return unless ref($node) eq 'pi';
-			if ($self->{literal}->value) {
-				return 1 if $node->[node_target] eq $self->{literal}->value;
+			return unless $node->getNodeType == PROCESSING_INSTRUCTION_NODE;
+			if (my $val = $self->{literal}->value) {
+				return 1 if $node->getTarget eq $val;
 			}
 			else {
 				return 1;
@@ -302,23 +314,17 @@ sub node_test {
 		}
 	}
 
-	return unless ref($node) eq 'element';
+	return unless $node->getNodeType == ELEMENT_NODE;
 	
 	if ($self->{test} =~ /^$XML::XPath::Parser::NCName$/) {
-		return 1 if $node->[node_name] eq $self->{test};
+		return 1 if $node->getLocalName eq $self->{test};
 	}
 	elsif ($self->{test} =~ /^($XML::XPath::Parser::NCName):\*$/) {
-		# Expand namespace, then match if current node in that ns.
-		# In reality we don't need to expand the prefix...
 		my $nsprefix = $1;
-		return 1 if $node->[node_prefix] eq $nsprefix;
+		return 1 if $node->getPrefix eq $nsprefix;
 	}
 	elsif ($self->{test} =~ /^($XML::XPath::Parser::NCName)\:($XML::XPath::Parser::NCName)$/) {
-		# Expand namespace, then match if node in that ns and name = NCName
-		# again, we don't really have to expand the prefix...
-		my ($nsprefix, $tag) = ($1, $2);
-		return unless $node->[node_prefix] eq $nsprefix;
-		return 1 if $node->[node_name] eq $tag;
+		return 1 if $node->getName eq $self->{test};
 	}
 	
 	return; # fallthrough returns false
@@ -338,20 +344,20 @@ sub test_attribute {
 	}
 	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName$/) {
 		# check attrib exists
-		if ($node->[node_key] eq $self->{test}) {
+		if ($node->getName eq $self->{test}) {
 			return 1;
 		}
 	}
 	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName:\*$/) {
 		my ($prefix) = $1;
-		if ($node->[node_prefix] eq $prefix) {
+		if ($node->getPrefix eq $prefix) {
 			return 1;
 		}
 	}
 	elsif ($self->{test} =~ /^$XML::XPath::Parser::NCName\:$XML::XPath::Parser::NCName$/) {
 		# Expand namespace, then match if node in that ns and name = NCName
 		my ($prefix, $key) = ($1, $2);
-		if ($node->[node_prefix] eq $prefix && $node->[node_key] eq $key) {
+		if ($node->getPrefix eq $prefix && $node->getName eq $key) {
 			return 1;
 		}
 	}
@@ -371,7 +377,7 @@ sub test_namespace {
 	if ($self->{test} eq 'node()') {
 		return 1;
 	}
-	elsif ($self->{test} eq $node->[node_expanded]) {
+	elsif ($self->{test} eq $node->getExpanded) {
 		return 1;
 	}
 	

@@ -1,11 +1,17 @@
-# $Id: Builder.pm,v 1.2 2000/02/24 19:46:03 matt Exp $
+# $Id: Builder.pm,v 1.3 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::Builder;
 
 use strict;
 
 # to get array index constants
-use XML::XPath::XMLParser;
+use XML::XPath::Node;
+use XML::XPath::Node::Element;
+use XML::XPath::Node::Attribute;
+use XML::XPath::Node::Namespace;
+use XML::XPath::Node::Text;
+use XML::XPath::Node::PI;
+use XML::XPath::Node::Comment;
 
 sub new {
 	my $class = shift;
@@ -20,25 +26,14 @@ sub new {
 # Perl SAX doesn't yet define how to handle namespaces
 
 sub mkelement {
-	my ($self, $current, $tag, $attribs) = @_;
-	
-	my $node = bless [], 'element';
-	
-	$node->[node_parent] = $current;
-	$node->[node_name] = $tag;
-	$node->[node_prefix] = "#default";
-	#$node->[node_namespace] = $e->namespace($tag);
-	$node->[node_children] = [];
+	my ($self, $tag, $attribs) = @_;
+
+	my $node = XML::XPath::Node::Element->new($tag, '#default');
 	
 	while (@$attribs) {
 		my ($key, $val) = (shift @$attribs, shift @$attribs);
-		my @newattr;
-		$newattr[node_parent] = $node;
-		$newattr[node_key] = $key;
-		$newattr[node_value] = $val;
-		$newattr[node_prefix] = "#default";
-		push @{$node->[node_attribs]}, bless(\@newattr, 'attribute');
-		$newattr[node_pos] = $#{$node->[node_attribs]};
+		my $newattr = XML::XPath::Node::Attribute->new($key, $val);
+		$node->appendAttribute($newattr);
 	}
 	
 	return $node;
@@ -46,64 +41,58 @@ sub mkelement {
 
 sub start_document {
 	my $self = shift;
+	$self->{Current} = XML::XPath::Node::Element->new();
+	$self->{Root} = $self->{Current};
 }
 
 sub characters {
 	my $self = shift;
 	my $characters = shift;
-	my @node;
-	$node[node_parent] = $self->{Current};
-	$node[node_text] = $characters->{Data};
-	push @{$self->{Current}->[node_children]}, bless(\@node, 'text');
-	$node[node_pos] = $#{$self->{Current}->[node_children]};
+	
+	my @kids = $self->{Current}->getChildNodes;
+	if (@kids && $kids[-1]->getNodeType == TEXT_NODE) {
+		$kids[-1]->appendText($characters);
+	}
+	else {
+		my $node = XML::XPath::Node::Text->new($characters);
+		$self->{Current}->appendChild($node);
+	}
 }
 
 sub start_element {
 	my $self = shift;
 	my $element = shift;
-	my $node = mkelement($self, $self->{Current}, $element->{Name}, $element->{Attributes});
-	push @{$self->{Current}->[node_children]}, $node;
-	$node->[node_pos] = $#{$self->{Current}->[node_children]};
+	my $node = mkelement($self, $element->{Name}, $element->{Attributes});
+	$self->{Current}->appendChild($node);
 	$self->{Current} = $node;
 }
 
 sub end_element {
 	my $self = shift;
 	$self->{Last} = $self->{Current};
-	$self->{Current} = $self->{Current}->[node_parent];
+	$self->{Current} = $self->{Current}->getParentNode;
 }
 
 sub end_document {
 	my $self = shift;
-	my $root = bless [], 'element';
-	
-	$root->[node_children] = [$self->{Last}];
-	$self->{Last}->[node_parent] = $root;
 	
 	delete $self->{Last};
 	delete $self->{Current};
-	return $root;
+	return $self->{Root};
 }
 
 sub processing_instruction {
 	my $self = shift;
 	my $pi = shift;
-	my @node;
-	$node[node_parent] = $self->{Current};
-	$node[node_target] = $pi->{Target};
-	$node[node_data] = $pi->{Data};
-	push @{$self->{Current}->[node_children]}, bless(\@node, 'pi');
-	$node[node_pos] = $#{$self->{Current}->[node_children]};
+	my $node = XML::XPath::Node::PI->new($pi->{Target}, $pi->{Data});
+	$self->{Current}->appendChild($node);
 }
 
 sub comment {
 	my $self = shift;
 	my $comment = shift;
-	my @node;
-	$node[node_parent] = $self->{Current};
-	$node[node_comment] = $comment->{Data};
-	push @{$self->{Current}->[node_children]}, bless(\@node, 'comment');
-	$node[node_pos] = $#{$self->{Current}->[node_children]};
+	my $node = XML::XPath::Node::Comment->new($comment);
+	$self->{Current}->appendChild($node);
 }
 
 1;

@@ -1,4 +1,4 @@
-# $Id: Boolean.pm,v 1.4 2000/04/20 09:12:13 matt Exp $
+# $Id: Boolean.pm,v 1.5 2000/05/08 13:08:01 matt Exp $
 
 package XML::XPath::Boolean;
 use XML::XPath::Number;
@@ -28,6 +28,8 @@ sub value {
 sub to_number { XML::XPath::Number->new($_[0]->value); }
 sub to_boolean { $_[0]; }
 sub to_literal { XML::XPath::Literal->new($_[0]->value ? "true" : "false"); }
+
+sub string_value { goto &to_literal; }
 
 1;
 __END__

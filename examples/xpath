@@ -48,7 +48,7 @@ if ($nodes->size) {
 	print "Found ", $nodes->size, " nodes:\n";
 	foreach my $node ($nodes->get_nodelist) {
 		print STDERR "-- NODE --\n";
-		print XML::XPath::XMLParser::as_string($node);
+		print $node->toString;
 	}
 }
 else {

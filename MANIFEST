@@ -10,6 +10,13 @@ XPath/Function.pm
 XPath/Literal.pm
 XPath/LocationPath.pm
 XPath/Number.pm
+XPath/Node.pm
+XPath/Node/Element.pm
+XPath/Node/Attribute.pm
+XPath/Node/Text.pm
+XPath/Node/Namespace.pm
+XPath/Node/PI.pm
+XPath/Node/Comment.pm
 XPath/Step.pm
 XPath/Variable.pm
 XPath/NodeSet.pm

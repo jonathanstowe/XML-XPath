@@ -42,7 +42,7 @@ my $nodes = $p->find('/timesheet//wednesday');
 
 # warn "$nodes size: ", $nodes->size, "\n";
 
-if ($nodes) { print "ok 5\n"; }
+if ($nodes->size) { print "ok 5\n"; }
 else { print "not ok 5\n"; }
 
 foreach my $node ($nodes->get_nodelist) {

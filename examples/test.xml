@@ -12,7 +12,7 @@
                 <rule>NextRule2</rule>
         </rules>
         <projects>
-                <project a:Name="Consultancy" b:Name="Fred">
+                <project a:Name="Consultancy > fred" b:Name="Fred">
                         <sunday>0.00</sunday>
                         <monday>0.00</monday>
                         <tuesday>7.75</tuesday>
