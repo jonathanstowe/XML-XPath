@@ -455,6 +455,10 @@ Returns the child at position pos.
 
 Appends the child node to the list of current child nodes.
 
+=head2 removeChild ( childnode )
+
+Removes the supplied child node from the list of current child nodes.
+
 =head2 getAttribute ( name )
 
 Returns the attribute node with key name.
