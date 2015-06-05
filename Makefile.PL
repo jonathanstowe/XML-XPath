@@ -6,9 +6,9 @@ require 5.005;
 
 WriteMakefile(
     'NAME'	=> 'XML::XPath',
-    'VERSION_FROM' => 'XPath.pm', # finds $VERSION
+    'VERSION_FROM' => 'lib/XML/XPath.pm', # finds $VERSION
     'AUTHOR' => 'Matt Sergeant, AxKit.com Ltd',
-    'ABSTRACT_FROM' => 'XPath.pm',
+    'ABSTRACT_FROM' => 'lib/XML/XPath.pm',
     'PREREQ_PM' => {
 		    'XML::Parser' => '2.23',
 		    },
